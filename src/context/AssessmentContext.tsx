@@ -120,63 +120,114 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const exportPDF = async () => {
     try {
       toast({
-        title: "Generating PDF",
-        description: "Please wait while we generate your PDF...",
+        title: "Generating Complete PDF",
+        description: "Please wait while we generate your complete assessment PDF...",
       });
       
-      // Get the assessment content element
-      const element = document.getElementById('assessment-content');
-      if (!element) {
-        throw new Error('Assessment content element not found');
-      }
-      
-      // Create a canvas from the element
-      const canvas = await html2canvas(element, {
-        scale: 1.5, // Higher scale for better quality
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-      
-      // Calculate dimensions to fit in A4
-      const imgData = canvas.toDataURL('image/png');
+      // Create a new PDF document
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
       
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+      // Define tab IDs to capture
+      const tabIds = ['overview', 'assessment', 'programmatic', 'planning'];
+      const tabNames = ['Overview & Visualization', 'Self Assessment', 'Programmatic Assessment', 'Planning'];
       
-      // Add program name as title
-      pdf.setFontSize(16);
-      pdf.text(`${assessmentData.programName || 'Program'} Assessment Report`, 105, 15, { align: 'center' });
+      // Store the current active tab to restore later
+      const currentActiveTab = document.querySelector('[data-state="active"][data-orientation="horizontal"]');
+      const currentActiveTabValue = currentActiveTab?.getAttribute('data-value') || 'overview';
+      
+      // Add title page
+      pdf.setFontSize(24);
+      pdf.text(`${assessmentData.programName || 'Program'} Assessment Report`, 105, 80, { align: 'center' });
+      pdf.setFontSize(14);
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 100, { align: 'center' });
       pdf.setFontSize(12);
-      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 22, { align: 'center' });
+      pdf.text('This report contains the following sections:', 105, 130, { align: 'center' });
       
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, 30, imgWidth, imgHeight);
-      heightLeft -= (pageHeight - 30);
+      let yPos = 145;
+      tabNames.forEach((name, index) => {
+        pdf.text(`${index + 1}. ${name}`, 105, yPos, { align: 'center' });
+        yPos += 10;
+      });
       
-      // Add additional pages if needed
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      // Process each tab
+      for (let i = 0; i < tabIds.length; i++) {
+        const tabId = tabIds[i];
+        const tabName = tabNames[i];
+        
+        // Click on the tab to make it active
+        const tabTrigger = document.querySelector(`[data-value="${tabId}"][role="tab"]`) as HTMLElement;
+        if (tabTrigger) {
+          tabTrigger.click();
+          
+          // Wait a moment for the tab content to render
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // Get the tab content
+          const tabContent = document.querySelector(`[data-state="active"][data-value="${tabId}"]`);
+          if (!tabContent) {
+            continue; // Skip if tab content not found
+          }
+          
+          // Add a new page for each tab (except the first one which comes after title page)
+          if (i > 0) {
+            pdf.addPage();
+          } else {
+            pdf.addPage(); // Add page after title page
+          }
+          
+          // Add section header
+          pdf.setFontSize(16);
+          pdf.text(`${tabName}`, 105, 15, { align: 'center' });
+          pdf.setDrawColor(0);
+          pdf.line(20, 20, 190, 20);
+          
+          // Capture the tab content
+          const canvas = await html2canvas(tabContent as HTMLElement, {
+            scale: 1.5,
+            useCORS: true,
+            logging: false,
+            allowTaint: true,
+            backgroundColor: '#ffffff'
+          });
+          
+          // Calculate dimensions to fit in A4
+          const imgData = canvas.toDataURL('image/png');
+          const imgWidth = 190; // A4 width with margins
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          
+          // Add the image to the PDF
+          pdf.addImage(imgData, 'PNG', 10, 25, imgWidth, imgHeight);
+          
+          // If content is too tall for one page, add additional pages
+          let heightLeft = imgHeight;
+          let position = 0;
+          heightLeft -= (297 - 25); // A4 height minus top margin
+          
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+            heightLeft -= 297; // A4 height
+          }
+        }
+      }
+      
+      // Restore the original tab
+      const originalTabTrigger = document.querySelector(`[data-value="${currentActiveTabValue}"][role="tab"]`) as HTMLElement;
+      if (originalTabTrigger) {
+        originalTabTrigger.click();
       }
       
       // Save the PDF
-      pdf.save(`${assessmentData.programName || 'program'}_assessment_${new Date().toISOString().split('T')[0]}.pdf`);
+      pdf.save(`${assessmentData.programName || 'program'}_complete_assessment_${new Date().toISOString().split('T')[0]}.pdf`);
       
       toast({
-        title: "PDF Generated",
-        description: "Your assessment has been exported as a PDF.",
+        title: "Complete PDF Generated",
+        description: "Your complete assessment has been exported as a PDF with all sections.",
       });
     } catch (error) {
       console.error('PDF generation error:', error);
@@ -185,6 +236,18 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive",
       });
+      
+      // Ensure we restore the original tab even if there's an error
+      try {
+        const currentActiveTab = document.querySelector('[data-state="active"][data-orientation="horizontal"]');
+        const currentActiveTabValue = currentActiveTab?.getAttribute('data-value') || 'overview';
+        const originalTabTrigger = document.querySelector(`[data-value="${currentActiveTabValue}"][role="tab"]`) as HTMLElement;
+        if (originalTabTrigger) {
+          originalTabTrigger.click();
+        }
+      } catch (e) {
+        console.error('Error restoring tab:', e);
+      }
     }
   };
 
