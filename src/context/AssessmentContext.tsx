@@ -135,8 +135,16 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const tabIds = ['overview', 'assessment', 'programmatic', 'planning'];
       const tabNames = ['Overview & Visualization', 'Self Assessment', 'Programmatic Assessment', 'Planning'];
       
+      // Log all tab elements for debugging
+      console.log("All tab elements:", document.querySelectorAll('[role="tab"]'));
+      
+      // Find the tabs list
+      const tabsList = document.querySelector('[role="tablist"]');
+      console.log("Tabs list found:", !!tabsList);
+      
       // Store the current active tab to restore later
-      const currentActiveTab = document.querySelector('[data-state="active"][data-orientation="horizontal"]');
+      const currentActiveTab = document.querySelector('[aria-selected="true"][role="tab"]');
+      console.log("Current active tab:", currentActiveTab);
       const currentActiveTabValue = currentActiveTab?.getAttribute('data-value') || 'overview';
       
       // Add title page
@@ -153,29 +161,70 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         yPos += 10;
       });
       
-      // Process each tab
-      for (let i = 0; i < tabIds.length; i++) {
-        const tabId = tabIds[i];
-        const tabName = tabNames[i];
+      // Get all tab panels at once
+      const allTabPanels = document.querySelectorAll('[role="tabpanel"]');
+      console.log("All tab panels:", allTabPanels);
+      
+      // Capture the main content element as fallback
+      const mainContent = document.getElementById('assessment-content');
+      console.log("Main content element found:", !!mainContent);
+      
+      if (mainContent) {
+        // Add a page for the main content
+        pdf.addPage();
+        pdf.setFontSize(16);
+        pdf.text("Complete Assessment", 105, 15, { align: 'center' });
+        pdf.setDrawColor(0);
+        pdf.line(20, 20, 190, 20);
         
-        console.log(`Processing tab: ${tabName}`);
-        
-        // Click on the tab to make it active
-        const tabTrigger = document.querySelector(`[data-value="${tabId}"][role="tab"]`) as HTMLElement;
-        if (tabTrigger) {
-          tabTrigger.click();
+        try {
+          // Capture the main content
+          console.log("Capturing main content");
+          const canvas = await html2canvas(mainContent, {
+            scale: 1.5,
+            useCORS: true,
+            logging: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff'
+          });
           
-          // Wait longer for the tab content to render
-          await new Promise(resolve => setTimeout(resolve, 500));
+          console.log(`Canvas created for main content: ${canvas.width}x${canvas.height}`);
           
-          // Get the tab content - more specific selector
-          const tabContent = document.querySelector(`[role="tabpanel"][data-state="active"][data-value="${tabId}"]`);
-          console.log(`Tab content found for ${tabName}:`, !!tabContent);
+          // Calculate dimensions to fit in A4
+          const imgData = canvas.toDataURL('image/png');
+          const imgWidth = 190; // A4 width with margins
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
           
-          if (!tabContent) {
-            console.error(`Tab content not found for ${tabName}`);
-            continue; // Skip if tab content not found
+          // Add the image to the PDF
+          pdf.addImage(imgData, 'PNG', 10, 25, imgWidth, imgHeight);
+          
+          // If content is too tall for one page, add additional pages
+          let heightLeft = imgHeight;
+          let position = 0;
+          heightLeft -= (297 - 25); // A4 height minus top margin
+          
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+            heightLeft -= 297; // A4 height
           }
+        } catch (err) {
+          console.error("Error capturing main content:", err);
+          pdf.setFontSize(12);
+          pdf.setTextColor(255, 0, 0);
+          pdf.text(`Error capturing main content: ${err instanceof Error ? err.message : 'Unknown error'}`, 20, 40);
+          pdf.setTextColor(0, 0, 0);
+        }
+      }
+      
+      // Try to process each tab panel if we found them
+      if (allTabPanels.length > 0) {
+        for (let i = 0; i < Math.min(tabIds.length, allTabPanels.length); i++) {
+          const tabPanel = allTabPanels[i] as HTMLElement;
+          const tabName = tabNames[i];
+          
+          console.log(`Processing tab panel for ${tabName}`);
           
           // Add a new page for each tab
           pdf.addPage();
@@ -189,10 +238,10 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           try {
             // Capture the tab content
             console.log(`Capturing content for ${tabName}`);
-            const canvas = await html2canvas(tabContent as HTMLElement, {
+            const canvas = await html2canvas(tabPanel, {
               scale: 1.5,
               useCORS: true,
-              logging: true, // Enable logging for debugging
+              logging: true,
               allowTaint: true,
               backgroundColor: '#ffffff'
             });
@@ -228,15 +277,7 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             pdf.text(`Error capturing content for ${tabName}: ${err instanceof Error ? err.message : 'Unknown error'}`, 20, 40);
             pdf.setTextColor(0, 0, 0);
           }
-        } else {
-          console.error(`Tab trigger not found for ${tabName}`);
         }
-      }
-      
-      // Restore the original tab
-      const originalTabTrigger = document.querySelector(`[data-value="${currentActiveTabValue}"][role="tab"]`) as HTMLElement;
-      if (originalTabTrigger) {
-        originalTabTrigger.click();
       }
       
       // Save the PDF
@@ -253,18 +294,6 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive",
       });
-      
-      // Ensure we restore the original tab even if there's an error
-      try {
-        const currentActiveTab = document.querySelector('[data-state="active"][data-orientation="horizontal"]');
-        const currentActiveTabValue = currentActiveTab?.getAttribute('data-value') || 'overview';
-        const originalTabTrigger = document.querySelector(`[data-value="${currentActiveTabValue}"][role="tab"]`) as HTMLElement;
-        if (originalTabTrigger) {
-          originalTabTrigger.click();
-        }
-      } catch (e) {
-        console.error('Error restoring tab:', e);
-      }
     }
   };
 
