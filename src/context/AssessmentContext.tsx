@@ -1,5 +1,4 @@
-import * as React from 'react';
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { AssessmentData, Dimension, ProgrammaticItem, PlanningNotes } from '../types/assessmentTypes';
 import { defaultAssessmentData } from '../utils/defaultAssessmentData';
 import { toast } from '../components/ui/use-toast';
@@ -16,21 +15,29 @@ interface AssessmentContextType {
   setPlanningNotes: (field: keyof PlanningNotes, value: string) => void;
   setProgramName: (name: string) => void;
   resetAssessment: () => void;
-  saveAssessment: () => void; // Reverted signature
-  loadAssessment: () => void; // Reverted signature
+  saveAssessment: () => void; // Will be JSON save
+  loadAssessment: () => void; // Will be JSON load
   exportPDF: () => void;
 }
 
 const AssessmentContext = createContext<AssessmentContextType | undefined>(undefined);
 
-// Removed triggerDownload helper function
+// Helper function to trigger file download (for JSON)
+const triggerJsonDownload = (jsonData: string, filename: string) => {
+  const blob = new Blob([jsonData], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Restore initial state loading from localStorage
-  const [assessmentData, setAssessmentData] = useState<AssessmentData>(() => {
-    const savedData = localStorage.getItem('assessmentData');
-    return savedData ? JSON.parse(savedData) : defaultAssessmentData;
-  });
+  // Initialize state directly with default data
+  const [assessmentData, setAssessmentData] = useState<AssessmentData>(defaultAssessmentData);
 
   // Keep useCallback for setters
   const setDimensionRating = useCallback((id: string, rating: number) => {
@@ -86,11 +93,10 @@ export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children
     }));
   }, []);
 
-  // Reverted resetAssessment to include localStorage removal
+  // Reset function remains the same (no localStorage interaction needed)
   const resetAssessment = useCallback(() => {
     if (confirm('Are you sure you want to reset the assessment? All your current data will be lost.')) {
       setAssessmentData(defaultAssessmentData);
-      localStorage.removeItem('assessmentData'); // Restore localStorage interaction
       toast({
         title: "Assessment Reset",
         description: "The assessment has been reset to default values.",
@@ -98,54 +104,95 @@ export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, []);
 
-  // --- Reverted saveAssessment function ---
+  // --- Updated saveAssessment function (JSON) ---
   const saveAssessment = useCallback(() => {
     try {
-      localStorage.setItem('assessmentData', JSON.stringify(assessmentData));
+      // Use pretty print for readability
+      const jsonData = JSON.stringify(assessmentData, null, 2);
+      const fileName = `${assessmentData.programName || 'program'}_assessment_data_${new Date().toISOString().split('T')[0]}.json`;
+      triggerJsonDownload(jsonData, fileName);
+
       toast({
-        title: "Assessment Saved",
-        description: "Your assessment data has been saved to browser storage.", // Updated description
+        title: "Assessment Exported",
+        description: "Your assessment data has been exported to a JSON file.",
       });
+
     } catch (error) {
-       console.error('LocalStorage save error:', error);
+       console.error('JSON export error:', error);
        toast({
-         title: "Save Failed",
-         description: "Could not save assessment data to browser storage.",
+         title: "Export Failed",
+         description: "Could not export assessment data to JSON.",
          variant: "destructive",
        });
     }
   }, [assessmentData]);
 
-  // --- Reverted loadAssessment function ---
+  // --- Updated loadAssessment function (JSON) ---
   const loadAssessment = useCallback(() => {
-    try {
-      const savedData = localStorage.getItem('assessmentData');
-      if (savedData) {
-        // Add basic validation before parsing
-        JSON.parse(savedData); // Try parsing to catch invalid JSON
-        setAssessmentData(JSON.parse(savedData));
-        toast({
-          title: "Assessment Loaded",
-          description: "Assessment data successfully loaded from browser storage.", // Updated description
-        });
-      } else {
-        toast({
-          title: "No Saved Data",
-          description: "No assessment data found in browser storage.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-       console.error('LocalStorage load error:', error);
-       toast({
-         title: "Load Failed",
-         description: "Could not load assessment data from browser storage. Data might be corrupted.",
-         variant: "destructive",
-       });
-    }
-  }, [setAssessmentData]); // Added dependency
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json'; // Accept only JSON files
 
-  // --- exportPDF function (kept from previous successful write) ---
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) {
+        toast({ title: "Load Cancelled", description: "No file selected." }); // Changed variant
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const fileContent = event.target?.result as string;
+          if (!fileContent) throw new Error("File content is empty.");
+
+          const loadedData = JSON.parse(fileContent);
+
+          // Basic validation: Check for essential top-level keys
+          if (
+            typeof loadedData !== 'object' ||
+            loadedData === null ||
+            !Array.isArray(loadedData.dimensions) ||
+            !Array.isArray(loadedData.programmaticItems) ||
+            typeof loadedData.planningNotes !== 'object' ||
+            loadedData.planningNotes === null
+          ) {
+            throw new Error("Invalid JSON file structure. Does not match assessment data format.");
+          }
+
+          // Further validation could be added here (e.g., checking specific properties)
+
+          // Ensure loaded data conforms to AssessmentData type (or handle potential discrepancies)
+          // For simplicity, we assume the structure matches. More robust parsing might be needed
+          // if the format could vary significantly or needs migration.
+          setAssessmentData(loadedData as AssessmentData);
+
+          toast({
+            title: "Assessment Loaded",
+            description: "Assessment data successfully loaded from JSON file.",
+          });
+
+        } catch (error) {
+          console.error('JSON load error:', error);
+          toast({
+            title: "Load Failed",
+            description: error instanceof Error ? error.message : "Could not load assessment data from JSON file.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      reader.onerror = () => {
+        toast({ title: "File Read Error", description: "Could not read the selected file.", variant: "destructive" });
+      };
+
+      reader.readAsText(file); // Read as text for JSON
+    };
+
+    input.click(); // Trigger file selection dialog
+  }, [setAssessmentData]);
+
+  // --- exportPDF function (remains unchanged from last working version) ---
   const exportPDF = async () => {
     try {
       toast({
