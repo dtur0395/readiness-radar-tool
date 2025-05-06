@@ -122,7 +122,7 @@ const AssessmentLayout: React.FC = () => {
                 <div>
                   <h4 className="font-medium mb-1">Scoring Guidance</h4>
                   <ul className="space-y-1 text-sm">
-                    <li><strong>Level 1:</strong> Early Stage — Ad hoc or minimal implementation</li>
+                    <li><strong>Level 1:</strong> Early Stage — Limited or minimal implementation</li>
                     <li><strong>Level 2:</strong> Emerging Practice — Some progress; work underway</li>
                     <li><strong>Level 3:</strong> Aligned to PLA Minimum — Fully mapped, coordinated, and structured</li>
                   </ul>
