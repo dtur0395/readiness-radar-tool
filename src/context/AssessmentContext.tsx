@@ -158,26 +158,27 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const tabId = tabIds[i];
         const tabName = tabNames[i];
         
+        console.log(`Processing tab: ${tabName}`);
+        
         // Click on the tab to make it active
         const tabTrigger = document.querySelector(`[data-value="${tabId}"][role="tab"]`) as HTMLElement;
         if (tabTrigger) {
           tabTrigger.click();
           
-          // Wait a moment for the tab content to render
-          await new Promise(resolve => setTimeout(resolve, 300));
+          // Wait longer for the tab content to render
+          await new Promise(resolve => setTimeout(resolve, 500));
           
-          // Get the tab content
-          const tabContent = document.querySelector(`[data-state="active"][data-value="${tabId}"]`);
+          // Get the tab content - more specific selector
+          const tabContent = document.querySelector(`[role="tabpanel"][data-state="active"][data-value="${tabId}"]`);
+          console.log(`Tab content found for ${tabName}:`, !!tabContent);
+          
           if (!tabContent) {
+            console.error(`Tab content not found for ${tabName}`);
             continue; // Skip if tab content not found
           }
           
-          // Add a new page for each tab (except the first one which comes after title page)
-          if (i > 0) {
-            pdf.addPage();
-          } else {
-            pdf.addPage(); // Add page after title page
-          }
+          // Add a new page for each tab
+          pdf.addPage();
           
           // Add section header
           pdf.setFontSize(16);
@@ -185,34 +186,50 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           pdf.setDrawColor(0);
           pdf.line(20, 20, 190, 20);
           
-          // Capture the tab content
-          const canvas = await html2canvas(tabContent as HTMLElement, {
-            scale: 1.5,
-            useCORS: true,
-            logging: false,
-            allowTaint: true,
-            backgroundColor: '#ffffff'
-          });
-          
-          // Calculate dimensions to fit in A4
-          const imgData = canvas.toDataURL('image/png');
-          const imgWidth = 190; // A4 width with margins
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-          
-          // Add the image to the PDF
-          pdf.addImage(imgData, 'PNG', 10, 25, imgWidth, imgHeight);
-          
-          // If content is too tall for one page, add additional pages
-          let heightLeft = imgHeight;
-          let position = 0;
-          heightLeft -= (297 - 25); // A4 height minus top margin
-          
-          while (heightLeft > 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-            heightLeft -= 297; // A4 height
+          try {
+            // Capture the tab content
+            console.log(`Capturing content for ${tabName}`);
+            const canvas = await html2canvas(tabContent as HTMLElement, {
+              scale: 1.5,
+              useCORS: true,
+              logging: true, // Enable logging for debugging
+              allowTaint: true,
+              backgroundColor: '#ffffff'
+            });
+            
+            console.log(`Canvas created for ${tabName}: ${canvas.width}x${canvas.height}`);
+            
+            // Calculate dimensions to fit in A4
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = 190; // A4 width with margins
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            
+            // Add the image to the PDF
+            pdf.addImage(imgData, 'PNG', 10, 25, imgWidth, imgHeight);
+            
+            // If content is too tall for one page, add additional pages
+            let heightLeft = imgHeight;
+            let position = 0;
+            heightLeft -= (297 - 25); // A4 height minus top margin
+            
+            while (heightLeft > 0) {
+              position = heightLeft - imgHeight;
+              pdf.addPage();
+              pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+              heightLeft -= 297; // A4 height
+            }
+            
+            console.log(`Finished processing ${tabName}`);
+          } catch (err) {
+            console.error(`Error capturing ${tabName}:`, err);
+            // Add error message to PDF instead of skipping
+            pdf.setFontSize(12);
+            pdf.setTextColor(255, 0, 0);
+            pdf.text(`Error capturing content for ${tabName}: ${err instanceof Error ? err.message : 'Unknown error'}`, 20, 40);
+            pdf.setTextColor(0, 0, 0);
           }
+        } else {
+          console.error(`Tab trigger not found for ${tabName}`);
         }
       }
       
