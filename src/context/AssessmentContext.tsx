@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'; // Added useEffect
 import { AssessmentData, Dimension, ProgrammaticItem, PlanningNotes } from '../types/assessmentTypes';
 import { defaultAssessmentData } from '../utils/defaultAssessmentData';
 import { toast } from '../components/ui/use-toast';
@@ -38,6 +38,11 @@ const triggerJsonDownload = (jsonData: string, filename: string) => {
 export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Initialize state directly with default data
   const [assessmentData, setAssessmentData] = useState<AssessmentData>(defaultAssessmentData);
+
+  // Log state changes for debugging
+  useEffect(() => {
+    console.log("AssessmentData updated in context:", assessmentData);
+  }, [assessmentData]);
 
   // Keep useCallback for setters
   const setDimensionRating = useCallback((id: string, rating: number) => {
@@ -165,6 +170,8 @@ export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children
           // Ensure loaded data conforms to AssessmentData type (or handle potential discrepancies)
           // For simplicity, we assume the structure matches. More robust parsing might be needed
           // if the format could vary significantly or needs migration.
+
+          console.log("Attempting to set assessment state with loaded data:", loadedData); // Log before setting state
           setAssessmentData(loadedData as AssessmentData);
 
           toast({
