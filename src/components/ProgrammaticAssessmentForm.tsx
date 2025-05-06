@@ -30,7 +30,7 @@ const ProgrammaticAssessmentForm: React.FC<ProgrammaticAssessmentFormProps> = ({
         
         <div className="mt-2 flex space-x-4">
           <RadioGroup 
-            defaultValue={item.answer === true ? 'yes' : item.answer === false ? 'no' : ''}
+            value={item.answer === true ? 'yes' : item.answer === false ? 'no' : ''} // Use value instead of defaultValue
             onValueChange={handleAnswerChange}
             className="flex space-x-4"
           >

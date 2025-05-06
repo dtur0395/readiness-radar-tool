@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Dimension } from '../types/assessmentTypes';
-import { Radio } from './ui/radio-group';
+// Removed unused Radio import
 import { useAssessment } from '../context/AssessmentContext';
 import { Textarea } from './ui/textarea';
 import { 
@@ -58,7 +58,7 @@ const DimensionRatingForm: React.FC<DimensionRatingFormProps> = ({ dimension }) 
       </CardHeader>
       <CardContent>
         <RadioGroup 
-          defaultValue={dimension.currentRating.toString()} 
+          value={dimension.currentRating.toString()} // Use value instead of defaultValue
           onValueChange={handleRatingChange}
           className="flex space-x-1 mb-4"
         >
