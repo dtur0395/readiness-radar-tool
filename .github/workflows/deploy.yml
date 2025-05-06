@@ -26,10 +26,13 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
+
+      - name: Clean npm cache
+        run: npm cache clean --force
+
+      - name: Install dependencies (using install instead of ci for debugging)
+        run: npm install # Temporarily using install instead of ci
+
       - name: Build
         run: npm run build
       
