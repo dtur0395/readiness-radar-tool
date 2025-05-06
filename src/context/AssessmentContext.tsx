@@ -135,18 +135,6 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const tabIds = ['overview', 'assessment', 'programmatic', 'planning'];
       const tabNames = ['Overview & Visualization', 'Self Assessment', 'Programmatic Assessment', 'Planning'];
       
-      // Log all tab elements for debugging
-      console.log("All tab elements:", document.querySelectorAll('[role="tab"]'));
-      
-      // Find the tabs list
-      const tabsList = document.querySelector('[role="tablist"]');
-      console.log("Tabs list found:", !!tabsList);
-      
-      // Store the current active tab to restore later
-      const currentActiveTab = document.querySelector('[aria-selected="true"][role="tab"]');
-      console.log("Current active tab:", currentActiveTab);
-      const currentActiveTabValue = currentActiveTab?.getAttribute('data-value') || 'overview';
-      
       // Add title page
       pdf.setFontSize(24);
       pdf.text(`${assessmentData.programName || 'Program'} Assessment Report`, 105, 80, { align: 'center' });
@@ -161,100 +149,56 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         yPos += 10;
       });
       
-      // Get all tab panels at once
-      const allTabPanels = document.querySelectorAll('[role="tabpanel"]');
-      console.log("All tab panels:", allTabPanels);
+      // Find the currently active tab panel
+      const activeTabPanel = document.querySelector('[role="tabpanel"][data-state="active"]');
+      console.log("Active tab panel found:", !!activeTabPanel);
       
-      // Capture the main content element as fallback
-      const mainContent = document.getElementById('assessment-content');
-      console.log("Main content element found:", !!mainContent);
+      // Get the active tab value
+      const activeTabValue = activeTabPanel?.getAttribute('data-value') || 'overview';
+      console.log("Active tab value:", activeTabValue);
       
-      if (mainContent) {
-        // Add a page for the main content
+      // Find the active tab name
+      const activeTabIndex = tabIds.indexOf(activeTabValue);
+      const activeTabName = activeTabIndex >= 0 ? tabNames[activeTabIndex] : "Current View";
+      
+      if (activeTabPanel) {
+        // Add a page for the active tab content
         pdf.addPage();
         pdf.setFontSize(16);
-        pdf.text("Complete Assessment", 105, 15, { align: 'center' });
+        pdf.text(activeTabName, 105, 15, { align: 'center' });
         pdf.setDrawColor(0);
         pdf.line(20, 20, 190, 20);
         
         try {
-          // Capture the main content
-          console.log("Capturing main content");
-          const canvas = await html2canvas(mainContent, {
-            scale: 1.5,
+          // Capture the active tab content with lower quality to avoid PNG corruption
+          console.log(`Capturing active tab content: ${activeTabName}`);
+          const canvas = await html2canvas(activeTabPanel as HTMLElement, {
+            scale: 1.0, // Lower scale to reduce file size
             useCORS: true,
             logging: true,
             allowTaint: true,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            imageTimeout: 15000, // Longer timeout
+            onclone: (clonedDoc) => {
+              // Make any hidden elements in the cloned document visible
+              const hiddenElements = clonedDoc.querySelectorAll('[aria-hidden="true"]');
+              hiddenElements.forEach(el => {
+                (el as HTMLElement).style.display = 'none';
+              });
+              return clonedDoc;
+            }
           });
           
-          console.log(`Canvas created for main content: ${canvas.width}x${canvas.height}`);
-          
-          // Calculate dimensions to fit in A4
-          const imgData = canvas.toDataURL('image/png');
-          const imgWidth = 190; // A4 width with margins
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-          
-          // Add the image to the PDF
-          pdf.addImage(imgData, 'PNG', 10, 25, imgWidth, imgHeight);
-          
-          // If content is too tall for one page, add additional pages
-          let heightLeft = imgHeight;
-          let position = 0;
-          heightLeft -= (297 - 25); // A4 height minus top margin
-          
-          while (heightLeft > 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-            heightLeft -= 297; // A4 height
-          }
-        } catch (err) {
-          console.error("Error capturing main content:", err);
-          pdf.setFontSize(12);
-          pdf.setTextColor(255, 0, 0);
-          pdf.text(`Error capturing main content: ${err instanceof Error ? err.message : 'Unknown error'}`, 20, 40);
-          pdf.setTextColor(0, 0, 0);
-        }
-      }
-      
-      // Try to process each tab panel if we found them
-      if (allTabPanels.length > 0) {
-        for (let i = 0; i < Math.min(tabIds.length, allTabPanels.length); i++) {
-          const tabPanel = allTabPanels[i] as HTMLElement;
-          const tabName = tabNames[i];
-          
-          console.log(`Processing tab panel for ${tabName}`);
-          
-          // Add a new page for each tab
-          pdf.addPage();
-          
-          // Add section header
-          pdf.setFontSize(16);
-          pdf.text(`${tabName}`, 105, 15, { align: 'center' });
-          pdf.setDrawColor(0);
-          pdf.line(20, 20, 190, 20);
+          console.log(`Canvas created: ${canvas.width}x${canvas.height}`);
           
           try {
-            // Capture the tab content
-            console.log(`Capturing content for ${tabName}`);
-            const canvas = await html2canvas(tabPanel, {
-              scale: 1.5,
-              useCORS: true,
-              logging: true,
-              allowTaint: true,
-              backgroundColor: '#ffffff'
-            });
-            
-            console.log(`Canvas created for ${tabName}: ${canvas.width}x${canvas.height}`);
-            
-            // Calculate dimensions to fit in A4
-            const imgData = canvas.toDataURL('image/png');
+            // Try JPEG format instead of PNG to avoid corruption
+            const imgData = canvas.toDataURL('image/jpeg', 0.8);
             const imgWidth = 190; // A4 width with margins
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
             
             // Add the image to the PDF
-            pdf.addImage(imgData, 'PNG', 10, 25, imgWidth, imgHeight);
+            pdf.addImage(imgData, 'JPEG', 10, 25, imgWidth, imgHeight);
             
             // If content is too tall for one page, add additional pages
             let heightLeft = imgHeight;
@@ -264,28 +208,85 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             while (heightLeft > 0) {
               position = heightLeft - imgHeight;
               pdf.addPage();
-              pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+              pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
               heightLeft -= 297; // A4 height
             }
+          } catch (imgErr) {
+            console.error("Error with image data:", imgErr);
             
-            console.log(`Finished processing ${tabName}`);
+            // Try with even lower quality as a last resort
+            try {
+              const imgData = canvas.toDataURL('image/jpeg', 0.5);
+              pdf.addImage(imgData, 'JPEG', 10, 25, 190, 100);
+            } catch (finalErr) {
+              throw new Error(`Failed to process image: ${finalErr.message}`);
+            }
+          }
+        } catch (err) {
+          console.error(`Error capturing content:`, err);
+          pdf.setFontSize(12);
+          pdf.setTextColor(255, 0, 0);
+          pdf.text(`Error capturing content: ${err instanceof Error ? err.message : 'Unknown error'}`, 20, 40);
+          pdf.text("Please try viewing one tab at a time and exporting each separately.", 20, 55);
+          pdf.setTextColor(0, 0, 0);
+        }
+      } else {
+        // Fallback to capturing the entire assessment content
+        const mainContent = document.getElementById('assessment-content');
+        console.log("Falling back to main content, found:", !!mainContent);
+        
+        if (mainContent) {
+          pdf.addPage();
+          pdf.setFontSize(16);
+          pdf.text("Current View", 105, 15, { align: 'center' });
+          pdf.setDrawColor(0);
+          pdf.line(20, 20, 190, 20);
+          
+          try {
+            // Capture with lower quality settings
+            const canvas = await html2canvas(mainContent, {
+              scale: 0.8, // Lower scale
+              useCORS: true,
+              logging: true,
+              allowTaint: true,
+              backgroundColor: '#ffffff',
+              imageTimeout: 15000 // Longer timeout
+            });
+            
+            // Use JPEG instead of PNG
+            const imgData = canvas.toDataURL('image/jpeg', 0.7);
+            const imgWidth = 190;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            
+            pdf.addImage(imgData, 'JPEG', 10, 25, imgWidth, imgHeight);
+            
+            // Handle multi-page content
+            let heightLeft = imgHeight;
+            let position = 0;
+            heightLeft -= (297 - 25);
+            
+            while (heightLeft > 0) {
+              position = heightLeft - imgHeight;
+              pdf.addPage();
+              pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
+              heightLeft -= 297;
+            }
           } catch (err) {
-            console.error(`Error capturing ${tabName}:`, err);
-            // Add error message to PDF instead of skipping
+            console.error("Error capturing main content:", err);
             pdf.setFontSize(12);
             pdf.setTextColor(255, 0, 0);
-            pdf.text(`Error capturing content for ${tabName}: ${err instanceof Error ? err.message : 'Unknown error'}`, 20, 40);
+            pdf.text(`Error capturing content: ${err instanceof Error ? err.message : 'Unknown error'}`, 20, 40);
             pdf.setTextColor(0, 0, 0);
           }
         }
       }
       
       // Save the PDF
-      pdf.save(`${assessmentData.programName || 'program'}_complete_assessment_${new Date().toISOString().split('T')[0]}.pdf`);
+      pdf.save(`${assessmentData.programName || 'program'}_assessment_${new Date().toISOString().split('T')[0]}.pdf`);
       
       toast({
-        title: "Complete PDF Generated",
-        description: "Your complete assessment has been exported as a PDF with all sections.",
+        title: "PDF Generated",
+        description: "Your assessment has been exported as a PDF. For best results, try exporting one tab at a time.",
       });
     } catch (error) {
       console.error('PDF generation error:', error);
