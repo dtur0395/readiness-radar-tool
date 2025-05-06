@@ -169,117 +169,125 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         pdf.setDrawColor(0);
         pdf.line(20, 20, 190, 20);
         
-        try {
-          // Capture the active tab content with lower quality to avoid PNG corruption
-          console.log(`Capturing active tab content: ${activeTabName}`);
-          const canvas = await html2canvas(activeTabPanel as HTMLElement, {
-            scale: 1.0, // Lower scale to reduce file size
-            useCORS: true,
-            logging: true,
-            allowTaint: true,
-            backgroundColor: '#ffffff',
-            imageTimeout: 15000, // Longer timeout
-            onclone: (clonedDoc) => {
-              // Make any hidden elements in the cloned document visible
-              const hiddenElements = clonedDoc.querySelectorAll('[aria-hidden="true"]');
-              hiddenElements.forEach(el => {
-                (el as HTMLElement).style.display = 'none';
-              });
-              return clonedDoc;
-            }
-          });
-          
-          console.log(`Canvas created: ${canvas.width}x${canvas.height}`);
-          
           try {
-            // Try JPEG format instead of PNG to avoid corruption
-            const imgData = canvas.toDataURL('image/jpeg', 0.8);
-            const imgWidth = 190; // A4 width with margins
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            const targetElement = activeTabPanel as HTMLElement;
+            console.log(`Capturing active tab content: ${activeTabName}`);
             
-            // Add the image to the PDF
-            pdf.addImage(imgData, 'JPEG', 10, 25, imgWidth, imgHeight);
+            // Get the full height of the element
+            const elementHeight = targetElement.scrollHeight;
+            const elementWidth = targetElement.scrollWidth;
             
-            // If content is too tall for one page, add additional pages
-            let heightLeft = imgHeight;
-            let position = 0;
-            heightLeft -= (297 - 25); // A4 height minus top margin
+            console.log(`Target element dimensions: ${elementWidth}x${elementHeight}`);
             
-            while (heightLeft > 0) {
-              position = heightLeft - imgHeight;
-              pdf.addPage();
-              pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-              heightLeft -= 297; // A4 height
-            }
-          } catch (imgErr) {
-            console.error("Error with image data:", imgErr);
-            
-            // Try with even lower quality as a last resort
-            try {
-              const imgData = canvas.toDataURL('image/jpeg', 0.5);
-              pdf.addImage(imgData, 'JPEG', 10, 25, 190, 100);
-            } catch (finalErr) {
-              throw new Error(`Failed to process image: ${finalErr.message}`);
-            }
-          }
-        } catch (err) {
-          console.error(`Error capturing content:`, err);
-          pdf.setFontSize(12);
-          pdf.setTextColor(255, 0, 0);
-          pdf.text(`Error capturing content: ${err instanceof Error ? err.message : 'Unknown error'}`, 20, 40);
-          pdf.text("Please try viewing one tab at a time and exporting each separately.", 20, 55);
-          pdf.setTextColor(0, 0, 0);
-        }
-      } else {
-        // Fallback to capturing the entire assessment content
-        const mainContent = document.getElementById('assessment-content');
-        console.log("Falling back to main content, found:", !!mainContent);
-        
-        if (mainContent) {
-          pdf.addPage();
-          pdf.setFontSize(16);
-          pdf.text("Current View", 105, 15, { align: 'center' });
-          pdf.setDrawColor(0);
-          pdf.line(20, 20, 190, 20);
-          
-          try {
-            // Capture with lower quality settings
-            const canvas = await html2canvas(mainContent, {
-              scale: 0.8, // Lower scale
+            const canvas = await html2canvas(targetElement, {
+              scale: 1.5, // Restore scale for better resolution
               useCORS: true,
               logging: true,
               allowTaint: true,
               backgroundColor: '#ffffff',
-              imageTimeout: 15000 // Longer timeout
+              imageTimeout: 15000,
+              height: elementHeight, // Explicitly set height
+              width: elementWidth,   // Explicitly set width
+              windowHeight: elementHeight, // Ensure window height matches
+              windowWidth: elementWidth,   // Ensure window width matches
+              scrollY: -window.scrollY // Account for page scroll
             });
             
-            // Use JPEG instead of PNG
-            const imgData = canvas.toDataURL('image/jpeg', 0.7);
-            const imgWidth = 190;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            console.log(`Canvas created: ${canvas.width}x${canvas.height}`);
             
-            pdf.addImage(imgData, 'JPEG', 10, 25, imgWidth, imgHeight);
+            // Use PNG format again
+            const imgData = canvas.toDataURL('image/png');
+            const pdfWidth = 190; // A4 width with margins (210mm - 10mm margin left - 10mm margin right)
+            const pdfHeight = 277; // A4 height with margins (297mm - 10mm margin top - 10mm margin bottom)
             
-            // Handle multi-page content
+            const imgProps = pdf.getImageProperties(imgData);
+            const imgWidth = pdfWidth;
+            const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+            
+            console.log(`Calculated image dimensions for PDF: ${imgWidth}x${imgHeight}`);
+            
             let heightLeft = imgHeight;
             let position = 0;
-            heightLeft -= (297 - 25);
+            const pageTopMargin = 25; // Top margin for content on each page
+            const pageBottomMargin = 10; // Bottom margin
+            const availablePageHeight = pdfHeight - pageTopMargin - pageBottomMargin; // Usable height per page
             
+            // Add the first part of the image
+            pdf.addImage(imgData, 'PNG', 10, pageTopMargin, imgWidth, imgHeight);
+            heightLeft -= availablePageHeight;
+            
+            console.log(`Initial heightLeft: ${heightLeft}`);
+            
+            // Add additional pages if needed
             while (heightLeft > 0) {
-              position = heightLeft - imgHeight;
+              position -= availablePageHeight; // Move the image up for the next page
               pdf.addPage();
-              pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-              heightLeft -= 297;
+              pdf.addImage(imgData, 'PNG', 10, position + pageTopMargin, imgWidth, imgHeight);
+              heightLeft -= availablePageHeight;
+              console.log(`Added new page, heightLeft: ${heightLeft}, position: ${position}`);
             }
+            
           } catch (err) {
-            console.error("Error capturing main content:", err);
+            console.error(`Error capturing content:`, err);
             pdf.setFontSize(12);
             pdf.setTextColor(255, 0, 0);
             pdf.text(`Error capturing content: ${err instanceof Error ? err.message : 'Unknown error'}`, 20, 40);
+            pdf.text("Please try viewing one tab at a time and exporting each separately.", 20, 55);
             pdf.setTextColor(0, 0, 0);
           }
+        } else {
+          // Fallback logic remains the same, but let's try PNG here too
+          const mainContent = document.getElementById('assessment-content');
+          console.log("Falling back to main content, found:", !!mainContent);
+          
+          if (mainContent) {
+            pdf.addPage();
+            pdf.setFontSize(16);
+            pdf.text("Current View", 105, 15, { align: 'center' });
+            pdf.setDrawColor(0);
+            pdf.line(20, 20, 190, 20);
+            
+            try {
+              const canvas = await html2canvas(mainContent, {
+                scale: 1.5, // Restore scale
+                useCORS: true,
+                logging: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                imageTimeout: 15000
+              });
+              
+              const imgData = canvas.toDataURL('image/png'); // Use PNG
+              const pdfWidth = 190;
+              const pdfHeight = 277;
+              const imgProps = pdf.getImageProperties(imgData);
+              const imgWidth = pdfWidth;
+              const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+              
+              let heightLeft = imgHeight;
+              let position = 0;
+              const pageTopMargin = 25;
+              const pageBottomMargin = 10;
+              const availablePageHeight = pdfHeight - pageTopMargin - pageBottomMargin;
+              
+              pdf.addImage(imgData, 'PNG', 10, pageTopMargin, imgWidth, imgHeight);
+              heightLeft -= availablePageHeight;
+              
+              while (heightLeft > 0) {
+                position -= availablePageHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 10, position + pageTopMargin, imgWidth, imgHeight);
+                heightLeft -= availablePageHeight;
+              }
+            } catch (err) {
+              console.error("Error capturing main content:", err);
+              pdf.setFontSize(12);
+              pdf.setTextColor(255, 0, 0);
+              pdf.text(`Error capturing content: ${err instanceof Error ? err.message : 'Unknown error'}`, 20, 40);
+              pdf.setTextColor(0, 0, 0);
+            }
+          }
         }
-      }
       
       // Save the PDF
       pdf.save(`${assessmentData.programName || 'program'}_assessment_${new Date().toISOString().split('T')[0]}.pdf`);
