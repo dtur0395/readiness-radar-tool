@@ -1,43 +1,38 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import * as React from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { AssessmentData, Dimension, ProgrammaticItem, PlanningNotes } from '../types/assessmentTypes';
 import { defaultAssessmentData } from '../utils/defaultAssessmentData';
 import { toast } from '../components/ui/use-toast';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf'; // Correct import
-import html2canvas from 'html2canvas'; // Correct import
+// Removed xlsx import
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface AssessmentContextType {
   assessmentData: AssessmentData;
   setDimensionRating: (id: string, rating: number) => void;
   setDimensionEvidence: (id: string, evidence: string) => void;
-  setProgrammaticAnswer: (id: string, answer: boolean | null) => void; // Allow null
+  setProgrammaticAnswer: (id: string, answer: boolean | null) => void;
   setProgrammaticComments: (id: string, comments: string) => void;
   setPlanningNotes: (field: keyof PlanningNotes, value: string) => void;
   setProgramName: (name: string) => void;
   resetAssessment: () => void;
-  saveAssessment: () => void;
-  loadAssessment: () => void;
+  saveAssessment: () => void; // Reverted signature
+  loadAssessment: () => void; // Reverted signature
   exportPDF: () => void;
 }
 
 const AssessmentContext = createContext<AssessmentContextType | undefined>(undefined);
 
-// Helper function to trigger file download
-const triggerDownload = (data: BlobPart, filename: string) => {
-  const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-};
+// Removed triggerDownload helper function
 
 export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [assessmentData, setAssessmentData] = useState<AssessmentData>(defaultAssessmentData);
+  // Restore initial state loading from localStorage
+  const [assessmentData, setAssessmentData] = useState<AssessmentData>(() => {
+    const savedData = localStorage.getItem('assessmentData');
+    return savedData ? JSON.parse(savedData) : defaultAssessmentData;
+  });
 
+  // Keep useCallback for setters
   const setDimensionRating = useCallback((id: string, rating: number) => {
     setAssessmentData(prevData => ({
       ...prevData,
@@ -51,7 +46,7 @@ export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children
     setAssessmentData(prevData => ({
       ...prevData,
       dimensions: prevData.dimensions.map(dim =>
-        dim.id === id ? { ...dim, evidence: evidence } : dim // Ensure evidence is updated
+        dim.id === id ? { ...dim, evidence: evidence } : dim
       ),
     }));
   }, []);
@@ -91,9 +86,11 @@ export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children
     }));
   }, []);
 
+  // Reverted resetAssessment to include localStorage removal
   const resetAssessment = useCallback(() => {
     if (confirm('Are you sure you want to reset the assessment? All your current data will be lost.')) {
       setAssessmentData(defaultAssessmentData);
+      localStorage.removeItem('assessmentData'); // Restore localStorage interaction
       toast({
         title: "Assessment Reset",
         description: "The assessment has been reset to default values.",
@@ -101,169 +98,51 @@ export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, []);
 
-  // --- Updated saveAssessment function ---
+  // --- Reverted saveAssessment function ---
   const saveAssessment = useCallback(() => {
     try {
-      const wb = XLSX.utils.book_new();
-
-      // Sheet 1: General Info
-      const generalInfo = [{
-        programName: assessmentData.programName,
-        assessmentDate: assessmentData.assessmentDate,
-      }];
-      const wsGeneral = XLSX.utils.json_to_sheet(generalInfo);
-      XLSX.utils.book_append_sheet(wb, wsGeneral, 'General Info');
-
-      // Sheet 2: Dimensions - Corrected properties
-      const dimensionsData = assessmentData.dimensions.map(d => ({
-        ID: d.id,
-        Stage: d.stage,
-        Name: d.name,
-        CurrentRating: d.currentRating,
-        TargetRating: d.targetRating, // Added
-        IndicatorLevel1: d.indicators.level1, // Added flattened
-        IndicatorLevel2: d.indicators.level2, // Added flattened
-        IndicatorLevel3: d.indicators.level3, // Added flattened
-        Evidence: d.evidence || '', // Keep evidence
-      }));
-      const wsDimensions = XLSX.utils.json_to_sheet(dimensionsData);
-      XLSX.utils.book_append_sheet(wb, wsDimensions, 'Dimensions');
-
-      // Sheet 3: Programmatic Items
-      const programmaticData = assessmentData.programmaticItems.map(p => ({
-        ID: p.id,
-        Question: p.question,
-        Answer: p.answer === null ? '' : (p.answer ? 'Yes' : 'No'), // Handle null
-        Comments: p.comments,
-      }));
-      const wsProgrammatic = XLSX.utils.json_to_sheet(programmaticData);
-      XLSX.utils.book_append_sheet(wb, wsProgrammatic, 'Programmatic Items');
-
-      // Sheet 4: Planning Notes - Corrected properties
-      const planningData = [{
-          strengths: assessmentData.planningNotes.strengths,
-          improvements: assessmentData.planningNotes.improvements, // Corrected
-          champions: assessmentData.planningNotes.champions,       // Corrected
-          resources: assessmentData.planningNotes.resources,       // Corrected
-      }];
-      const wsPlanning = XLSX.utils.json_to_sheet(planningData);
-      XLSX.utils.book_append_sheet(wb, wsPlanning, 'Planning Notes');
-
-      // Generate XLSX file data
-      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-
-      // Trigger download
-      const fileName = `${assessmentData.programName || 'program'}_assessment_data_${new Date().toISOString().split('T')[0]}.xlsx`;
-      triggerDownload(wbout, fileName);
-
+      localStorage.setItem('assessmentData', JSON.stringify(assessmentData));
       toast({
-        title: "Assessment Exported",
-        description: "Your assessment data has been exported to an XLSX file.",
+        title: "Assessment Saved",
+        description: "Your assessment data has been saved to browser storage.", // Updated description
       });
-
     } catch (error) {
-      console.error('XLSX export error:', error);
-      toast({
-        title: "Export Failed",
-        description: "Could not export assessment data to XLSX.",
-        variant: "destructive",
-      });
+       console.error('LocalStorage save error:', error);
+       toast({
+         title: "Save Failed",
+         description: "Could not save assessment data to browser storage.",
+         variant: "destructive",
+       });
     }
   }, [assessmentData]);
 
-  // --- Updated loadAssessment function ---
+  // --- Reverted loadAssessment function ---
   const loadAssessment = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.xlsx';
-
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) {
-        toast({ title: "Load Cancelled", description: "No file selected.", variant: "destructive" });
-        return;
+    try {
+      const savedData = localStorage.getItem('assessmentData');
+      if (savedData) {
+        // Add basic validation before parsing
+        JSON.parse(savedData); // Try parsing to catch invalid JSON
+        setAssessmentData(JSON.parse(savedData));
+        toast({
+          title: "Assessment Loaded",
+          description: "Assessment data successfully loaded from browser storage.", // Updated description
+        });
+      } else {
+        toast({
+          title: "No Saved Data",
+          description: "No assessment data found in browser storage.",
+          variant: "destructive",
+        });
       }
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const data = event.target?.result;
-          if (!data) throw new Error("File data could not be read.");
-
-          const workbook = XLSX.read(data, { type: 'array' });
-
-          const requiredSheets = ['General Info', 'Dimensions', 'Programmatic Items', 'Planning Notes'];
-          const missingSheets = requiredSheets.filter(sheet => !workbook.SheetNames.includes(sheet));
-          if (missingSheets.length > 0) {
-            throw new Error(`Invalid file format. Missing sheets: ${missingSheets.join(', ')}`);
-          }
-
-          const generalInfo = XLSX.utils.sheet_to_json(workbook.Sheets['General Info'])[0] as any;
-          const dimensionsData = XLSX.utils.sheet_to_json(workbook.Sheets['Dimensions']) as any[];
-          const programmaticData = XLSX.utils.sheet_to_json(workbook.Sheets['Programmatic Items']) as any[];
-          const planningNotesData = XLSX.utils.sheet_to_json(workbook.Sheets['Planning Notes'])[0] as any; // Corrected var name
-
-          // Reconstruct AssessmentData - Corrected
-          const loadedData: AssessmentData = {
-            programName: generalInfo?.programName || defaultAssessmentData.programName,
-            assessmentDate: generalInfo?.assessmentDate || defaultAssessmentData.assessmentDate,
-            dimensions: dimensionsData.map((d): Dimension => ({ // Added explicit Dimension type
-              id: d.ID || '',
-              stage: d.Stage || 'Readiness', // Provide default stage
-              name: d.Name || '',
-              currentRating: typeof d.CurrentRating === 'number' ? d.CurrentRating : 0,
-              targetRating: typeof d.TargetRating === 'number' ? d.TargetRating : 0, // Added
-              indicators: { // Added reconstruction
-                level1: d.IndicatorLevel1 || '',
-                level2: d.IndicatorLevel2 || '',
-                level3: d.IndicatorLevel3 || '',
-              },
-              evidence: d.Evidence || '',
-            })),
-            programmaticItems: programmaticData.map((p): ProgrammaticItem => ({ // Added explicit ProgrammaticItem type
-              id: p.ID || '',
-              question: p.Question || '',
-              answer: p.Answer === 'Yes' ? true : (p.Answer === 'No' ? false : null), // Handle null/empty
-              comments: p.Comments || '',
-            })),
-            planningNotes: { // Corrected properties
-              strengths: planningNotesData?.strengths || '',
-              improvements: planningNotesData?.improvements || '',
-              champions: planningNotesData?.champions || '',
-              resources: planningNotesData?.resources || '',
-            },
-          };
-
-          // Basic validation
-          if (!loadedData.dimensions?.length || !loadedData.programmaticItems?.length || !loadedData.planningNotes) {
-             throw new Error("File structure seems incorrect or empty. Could not load data.");
-          }
-
-          setAssessmentData(loadedData);
-
-          toast({
-            title: "Assessment Loaded",
-            description: "Assessment data successfully loaded from file.",
-          });
-
-        } catch (error) {
-          console.error('XLSX load error:', error);
-          toast({
-            title: "Load Failed",
-            description: error instanceof Error ? error.message : "Could not load assessment data from file.",
-            variant: "destructive",
-          });
-        }
-      };
-
-      reader.onerror = () => {
-        toast({ title: "File Read Error", description: "Could not read the selected file.", variant: "destructive" });
-      };
-
-      reader.readAsArrayBuffer(file);
-    };
-
-    input.click();
+    } catch (error) {
+       console.error('LocalStorage load error:', error);
+       toast({
+         title: "Load Failed",
+         description: "Could not load assessment data from browser storage. Data might be corrupted.",
+         variant: "destructive",
+       });
+    }
   }, [setAssessmentData]); // Added dependency
 
   // --- exportPDF function (kept from previous successful write) ---
@@ -274,7 +153,7 @@ export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children
         description: "Please wait while we generate the PDF for the current tab...",
       });
 
-      const pdf = new jsPDF({ // Corrected: Use jsPDF constructor
+      const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
@@ -305,7 +184,7 @@ export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children
       const elementScrollWidth = targetElement.scrollWidth;
       const options = { scale: 1.5, useCORS: true, logging: true, allowTaint: true, backgroundColor: '#ffffff', imageTimeout: 15000, height: elementScrollHeight, width: elementScrollWidth, windowHeight: elementScrollHeight, windowWidth: elementScrollWidth, scrollY: -window.scrollY };
 
-      const canvas = await html2canvas(targetElement, options); // Corrected: Use html2canvas function
+      const canvas = await html2canvas(targetElement, options);
       const imgData = canvas.toDataURL('image/png');
       const pdfWidth = 190;
       const pdfPageHeight = 297;
