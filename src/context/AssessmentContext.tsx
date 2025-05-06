@@ -1,17 +1,18 @@
-import React, { createContext, useContext, useState } from 'react';
-import { AssessmentData } from '../types/assessmentTypes';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { AssessmentData, Dimension, ProgrammaticItem, PlanningNotes } from '../types/assessmentTypes';
 import { defaultAssessmentData } from '../utils/defaultAssessmentData';
 import { toast } from '../components/ui/use-toast';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf'; // Correct import
+import html2canvas from 'html2canvas'; // Correct import
 
 interface AssessmentContextType {
   assessmentData: AssessmentData;
   setDimensionRating: (id: string, rating: number) => void;
   setDimensionEvidence: (id: string, evidence: string) => void;
-  setProgrammaticAnswer: (id: string, answer: boolean) => void;
+  setProgrammaticAnswer: (id: string, answer: boolean | null) => void; // Allow null
   setProgrammaticComments: (id: string, comments: string) => void;
-  setPlanningNotes: (field: keyof AssessmentData['planningNotes'], value: string) => void;
+  setPlanningNotes: (field: keyof PlanningNotes, value: string) => void;
   setProgramName: (name: string) => void;
   resetAssessment: () => void;
   saveAssessment: () => void;
@@ -21,49 +22,59 @@ interface AssessmentContextType {
 
 const AssessmentContext = createContext<AssessmentContextType | undefined>(undefined);
 
-export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [assessmentData, setAssessmentData] = useState<AssessmentData>(() => {
-    const savedData = localStorage.getItem('assessmentData');
-    return savedData ? JSON.parse(savedData) : defaultAssessmentData;
-  });
+// Helper function to trigger file download
+const triggerDownload = (data: BlobPart, filename: string) => {
+  const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
-  const setDimensionRating = (id: string, rating: number) => {
-    setAssessmentData(prevData => {
-      const updatedDimensions = prevData.dimensions.map(dim =>
+export const AssessmentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [assessmentData, setAssessmentData] = useState<AssessmentData>(defaultAssessmentData);
+
+  const setDimensionRating = useCallback((id: string, rating: number) => {
+    setAssessmentData(prevData => ({
+      ...prevData,
+      dimensions: prevData.dimensions.map(dim =>
         dim.id === id ? { ...dim, currentRating: rating } : dim
-      );
-      return { ...prevData, dimensions: updatedDimensions };
-    });
-  };
+      ),
+    }));
+  }, []);
 
-  const setDimensionEvidence = (id: string, evidence: string) => {
-    setAssessmentData(prevData => {
-      const updatedDimensions = prevData.dimensions.map(dim =>
-        dim.id === id ? { ...dim, evidence } : dim
-      );
-      return { ...prevData, dimensions: updatedDimensions };
-    });
-  };
+  const setDimensionEvidence = useCallback((id: string, evidence: string) => {
+    setAssessmentData(prevData => ({
+      ...prevData,
+      dimensions: prevData.dimensions.map(dim =>
+        dim.id === id ? { ...dim, evidence: evidence } : dim // Ensure evidence is updated
+      ),
+    }));
+  }, []);
 
-  const setProgrammaticAnswer = (id: string, answer: boolean) => {
-    setAssessmentData(prevData => {
-      const updatedItems = prevData.programmaticItems.map(item =>
+  const setProgrammaticAnswer = useCallback((id: string, answer: boolean | null) => {
+    setAssessmentData(prevData => ({
+      ...prevData,
+      programmaticItems: prevData.programmaticItems.map(item =>
         item.id === id ? { ...item, answer } : item
-      );
-      return { ...prevData, programmaticItems: updatedItems };
-    });
-  };
+      ),
+    }));
+  }, []);
 
-  const setProgrammaticComments = (id: string, comments: string) => {
-    setAssessmentData(prevData => {
-      const updatedItems = prevData.programmaticItems.map(item =>
+  const setProgrammaticComments = useCallback((id: string, comments: string) => {
+    setAssessmentData(prevData => ({
+      ...prevData,
+      programmaticItems: prevData.programmaticItems.map(item =>
         item.id === id ? { ...item, comments } : item
-      );
-      return { ...prevData, programmaticItems: updatedItems };
-    });
-  };
+      ),
+    }));
+  }, []);
 
-  const setPlanningNotes = (field: keyof AssessmentData['planningNotes'], value: string) => {
+  const setPlanningNotes = useCallback((field: keyof PlanningNotes, value: string) => {
     setAssessmentData(prevData => ({
       ...prevData,
       planningNotes: {
@@ -71,51 +82,191 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         [field]: value
       }
     }));
-  };
+  }, []);
 
-  const setProgramName = (name: string) => {
+  const setProgramName = useCallback((name: string) => {
     setAssessmentData(prevData => ({
       ...prevData,
       programName: name
     }));
-  };
+  }, []);
 
-  const resetAssessment = () => {
-    if (confirm('Are you sure you want to reset the assessment? All your data will be lost.')) {
+  const resetAssessment = useCallback(() => {
+    if (confirm('Are you sure you want to reset the assessment? All your current data will be lost.')) {
       setAssessmentData(defaultAssessmentData);
-      localStorage.removeItem('assessmentData');
       toast({
         title: "Assessment Reset",
         description: "The assessment has been reset to default values.",
       });
     }
-  };
+  }, []);
 
-  const saveAssessment = () => {
-    localStorage.setItem('assessmentData', JSON.stringify(assessmentData));
-    toast({
-      title: "Assessment Saved",
-      description: "Your assessment data has been saved successfully.",
-    });
-  };
+  // --- Updated saveAssessment function ---
+  const saveAssessment = useCallback(() => {
+    try {
+      const wb = XLSX.utils.book_new();
 
-  const loadAssessment = () => {
-    const savedData = localStorage.getItem('assessmentData');
-    if (savedData) {
-      setAssessmentData(JSON.parse(savedData));
+      // Sheet 1: General Info
+      const generalInfo = [{
+        programName: assessmentData.programName,
+        assessmentDate: assessmentData.assessmentDate,
+      }];
+      const wsGeneral = XLSX.utils.json_to_sheet(generalInfo);
+      XLSX.utils.book_append_sheet(wb, wsGeneral, 'General Info');
+
+      // Sheet 2: Dimensions - Corrected properties
+      const dimensionsData = assessmentData.dimensions.map(d => ({
+        ID: d.id,
+        Stage: d.stage,
+        Name: d.name,
+        CurrentRating: d.currentRating,
+        TargetRating: d.targetRating, // Added
+        IndicatorLevel1: d.indicators.level1, // Added flattened
+        IndicatorLevel2: d.indicators.level2, // Added flattened
+        IndicatorLevel3: d.indicators.level3, // Added flattened
+        Evidence: d.evidence || '', // Keep evidence
+      }));
+      const wsDimensions = XLSX.utils.json_to_sheet(dimensionsData);
+      XLSX.utils.book_append_sheet(wb, wsDimensions, 'Dimensions');
+
+      // Sheet 3: Programmatic Items
+      const programmaticData = assessmentData.programmaticItems.map(p => ({
+        ID: p.id,
+        Question: p.question,
+        Answer: p.answer === null ? '' : (p.answer ? 'Yes' : 'No'), // Handle null
+        Comments: p.comments,
+      }));
+      const wsProgrammatic = XLSX.utils.json_to_sheet(programmaticData);
+      XLSX.utils.book_append_sheet(wb, wsProgrammatic, 'Programmatic Items');
+
+      // Sheet 4: Planning Notes - Corrected properties
+      const planningData = [{
+          strengths: assessmentData.planningNotes.strengths,
+          improvements: assessmentData.planningNotes.improvements, // Corrected
+          champions: assessmentData.planningNotes.champions,       // Corrected
+          resources: assessmentData.planningNotes.resources,       // Corrected
+      }];
+      const wsPlanning = XLSX.utils.json_to_sheet(planningData);
+      XLSX.utils.book_append_sheet(wb, wsPlanning, 'Planning Notes');
+
+      // Generate XLSX file data
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+
+      // Trigger download
+      const fileName = `${assessmentData.programName || 'program'}_assessment_data_${new Date().toISOString().split('T')[0]}.xlsx`;
+      triggerDownload(wbout, fileName);
+
       toast({
-        title: "Assessment Loaded",
-        description: "Your assessment data has been loaded from storage.",
+        title: "Assessment Exported",
+        description: "Your assessment data has been exported to an XLSX file.",
       });
-    } else {
+
+    } catch (error) {
+      console.error('XLSX export error:', error);
       toast({
-        title: "No Saved Data",
-        description: "There is no saved assessment data to load.",
+        title: "Export Failed",
+        description: "Could not export assessment data to XLSX.",
         variant: "destructive",
       });
     }
-  };
+  }, [assessmentData]);
 
+  // --- Updated loadAssessment function ---
+  const loadAssessment = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx';
+
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) {
+        toast({ title: "Load Cancelled", description: "No file selected.", variant: "destructive" });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = event.target?.result;
+          if (!data) throw new Error("File data could not be read.");
+
+          const workbook = XLSX.read(data, { type: 'array' });
+
+          const requiredSheets = ['General Info', 'Dimensions', 'Programmatic Items', 'Planning Notes'];
+          const missingSheets = requiredSheets.filter(sheet => !workbook.SheetNames.includes(sheet));
+          if (missingSheets.length > 0) {
+            throw new Error(`Invalid file format. Missing sheets: ${missingSheets.join(', ')}`);
+          }
+
+          const generalInfo = XLSX.utils.sheet_to_json(workbook.Sheets['General Info'])[0] as any;
+          const dimensionsData = XLSX.utils.sheet_to_json(workbook.Sheets['Dimensions']) as any[];
+          const programmaticData = XLSX.utils.sheet_to_json(workbook.Sheets['Programmatic Items']) as any[];
+          const planningNotesData = XLSX.utils.sheet_to_json(workbook.Sheets['Planning Notes'])[0] as any; // Corrected var name
+
+          // Reconstruct AssessmentData - Corrected
+          const loadedData: AssessmentData = {
+            programName: generalInfo?.programName || defaultAssessmentData.programName,
+            assessmentDate: generalInfo?.assessmentDate || defaultAssessmentData.assessmentDate,
+            dimensions: dimensionsData.map((d): Dimension => ({ // Added explicit Dimension type
+              id: d.ID || '',
+              stage: d.Stage || 'Readiness', // Provide default stage
+              name: d.Name || '',
+              currentRating: typeof d.CurrentRating === 'number' ? d.CurrentRating : 0,
+              targetRating: typeof d.TargetRating === 'number' ? d.TargetRating : 0, // Added
+              indicators: { // Added reconstruction
+                level1: d.IndicatorLevel1 || '',
+                level2: d.IndicatorLevel2 || '',
+                level3: d.IndicatorLevel3 || '',
+              },
+              evidence: d.Evidence || '',
+            })),
+            programmaticItems: programmaticData.map((p): ProgrammaticItem => ({ // Added explicit ProgrammaticItem type
+              id: p.ID || '',
+              question: p.Question || '',
+              answer: p.Answer === 'Yes' ? true : (p.Answer === 'No' ? false : null), // Handle null/empty
+              comments: p.Comments || '',
+            })),
+            planningNotes: { // Corrected properties
+              strengths: planningNotesData?.strengths || '',
+              improvements: planningNotesData?.improvements || '',
+              champions: planningNotesData?.champions || '',
+              resources: planningNotesData?.resources || '',
+            },
+          };
+
+          // Basic validation
+          if (!loadedData.dimensions?.length || !loadedData.programmaticItems?.length || !loadedData.planningNotes) {
+             throw new Error("File structure seems incorrect or empty. Could not load data.");
+          }
+
+          setAssessmentData(loadedData);
+
+          toast({
+            title: "Assessment Loaded",
+            description: "Assessment data successfully loaded from file.",
+          });
+
+        } catch (error) {
+          console.error('XLSX load error:', error);
+          toast({
+            title: "Load Failed",
+            description: error instanceof Error ? error.message : "Could not load assessment data from file.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      reader.onerror = () => {
+        toast({ title: "File Read Error", description: "Could not read the selected file.", variant: "destructive" });
+      };
+
+      reader.readAsArrayBuffer(file);
+    };
+
+    input.click();
+  }, [setAssessmentData]); // Added dependency
+
+  // --- exportPDF function (kept from previous successful write) ---
   const exportPDF = async () => {
     try {
       toast({
@@ -123,119 +274,70 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         description: "Please wait while we generate the PDF for the current tab...",
       });
 
-      // Create a new PDF document
-      const pdf = new jsPDF({
+      const pdf = new jsPDF({ // Corrected: Use jsPDF constructor
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
 
-      // Define tab IDs to capture
       const tabIds = ['overview', 'assessment', 'programmatic', 'planning'];
       const tabNames = ['Overview & Visualization', 'Self Assessment', 'Programmatic Assessment', 'Planning'];
-
-      // Find the currently active tab panel
       const activeTabPanel = document.querySelector('[role="tabpanel"][data-state="active"]');
-      console.log("Active tab panel found:", !!activeTabPanel);
 
-      if (!activeTabPanel) {
-        throw new Error("Could not find the active tab content to export.");
-      }
+      if (!activeTabPanel) throw new Error("Could not find the active tab content to export.");
 
-      // Get the active tab value and name
       const activeTabValue = activeTabPanel.getAttribute('data-value') || 'unknown';
-      console.log("Active tab value:", activeTabValue);
       const activeTabIndex = tabIds.indexOf(activeTabValue);
       const activeTabName = activeTabIndex >= 0 ? tabNames[activeTabIndex] : "Current View";
 
-      // Add title page - Centered
       const pageWidth = pdf.internal.pageSize.getWidth();
       pdf.setFontSize(24);
       pdf.text(`${assessmentData.programName || 'Program'} Assessment Report`, pageWidth / 2, 30, { align: 'center' });
       pdf.setFontSize(16);
-      pdf.text(`Section: ${activeTabName}`, pageWidth / 2, 45, { align: 'center' }); // Use correct tab name
+      pdf.text(`Section: ${activeTabName}`, pageWidth / 2, 45, { align: 'center' });
       pdf.setFontSize(12);
       pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, 55, { align: 'center' });
 
-      // Add a new page for the content
       pdf.addPage();
 
       const targetElement = activeTabPanel as HTMLElement;
-      console.log(`Capturing active tab content: ${activeTabName}`);
-
-      // Get the full scroll height and width of the element
       const elementScrollHeight = targetElement.scrollHeight;
       const elementScrollWidth = targetElement.scrollWidth;
-      console.log(`Target element scroll dimensions: ${elementScrollWidth}x${elementScrollHeight}`);
+      const options = { scale: 1.5, useCORS: true, logging: true, allowTaint: true, backgroundColor: '#ffffff', imageTimeout: 15000, height: elementScrollHeight, width: elementScrollWidth, windowHeight: elementScrollHeight, windowWidth: elementScrollWidth, scrollY: -window.scrollY };
 
-      // Options for html2canvas
-      const options = {
-        scale: 1.5, // Restore scale for better resolution
-        useCORS: true,
-        logging: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        imageTimeout: 15000,
-        height: elementScrollHeight, // Use scrollHeight
-        width: elementScrollWidth,   // Use scrollWidth
-        windowHeight: elementScrollHeight, // Match window height to content
-        windowWidth: elementScrollWidth,   // Match window width to content
-        scrollY: -window.scrollY // Account for page scroll if any
-      };
-      console.log("html2canvas options:", options);
-
-      const canvas = await html2canvas(targetElement, options);
-      console.log(`Canvas created: ${canvas.width}x${canvas.height}`);
-
-      // Use PNG format again for better quality
+      const canvas = await html2canvas(targetElement, options); // Corrected: Use html2canvas function
       const imgData = canvas.toDataURL('image/png');
-      const pdfWidth = 190; // A4 width with margins (210mm - 10mm left - 10mm right)
-      const pdfPageHeight = 297; // A4 height in mm
-      const pageTopMargin = 15; // Reduced top margin for content pages
-      const pageBottomMargin = 10; // Bottom margin
-      const availablePageHeight = pdfPageHeight - pageTopMargin - pageBottomMargin; // Usable height per page
-
+      const pdfWidth = 190;
+      const pdfPageHeight = 297;
+      const pageTopMargin = 15;
+      const pageBottomMargin = 10;
+      const availablePageHeight = pdfPageHeight - pageTopMargin - pageBottomMargin;
       const imgProps = pdf.getImageProperties(imgData);
       const imgWidth = pdfWidth;
-      // Calculate the total height the image will occupy in the PDF
       const totalImgHeightInPDF = (imgProps.height * imgWidth) / imgProps.width;
-      console.log(`Calculated total image height in PDF: ${totalImgHeightInPDF}mm`);
-
       let heightLeft = totalImgHeightInPDF;
-      let position = 0; // Position of the image slice on the Y axis
+      let position = 0;
 
-      // Add the first part of the image
       pdf.addImage(imgData, 'PNG', 10, pageTopMargin, imgWidth, totalImgHeightInPDF);
       heightLeft -= availablePageHeight;
-      console.log(`Added first image part. Initial heightLeft: ${heightLeft}`);
 
-      // Add additional pages if needed
       while (heightLeft > 0) {
-        position -= availablePageHeight; // Move the viewing window of the image up
+        position -= availablePageHeight;
         pdf.addPage();
-        // Add the same image, but adjust the Y position to show the next part
         pdf.addImage(imgData, 'PNG', 10, position + pageTopMargin, imgWidth, totalImgHeightInPDF);
         heightLeft -= availablePageHeight;
-        console.log(`Added new page. heightLeft: ${heightLeft}, position: ${position}`);
       }
 
-      // Save the PDF
       pdf.save(`${assessmentData.programName || 'program'}_${activeTabValue}_${new Date().toISOString().split('T')[0]}.pdf`);
-
-      toast({
-        title: "PDF Generated",
-        description: `The '${activeTabName}' section has been exported as a PDF.`,
-      });
+      toast({ title: "PDF Generated", description: `The '${activeTabName}' section has been exported as a PDF.` });
 
     } catch (error) {
       console.error('PDF generation error:', error);
-      toast({
-        title: "PDF Generation Failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
-      });
+      toast({ title: "PDF Generation Failed", description: error instanceof Error ? error.message : "An unknown error occurred", variant: "destructive" });
     }
   };
+  // --- End of exportPDF ---
+
 
   const value = {
     assessmentData,
