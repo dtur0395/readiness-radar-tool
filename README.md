@@ -8,7 +8,7 @@
 ## How can I edit this code?
 
 There are several ways of editing your application.
-
+       
 **Use Lovable**
 
 Simply visit the [Lovable Project](https://lovable.dev/projects/9e3a5749-f2d8-4169-a91d-261c87df011c) and start prompting.
