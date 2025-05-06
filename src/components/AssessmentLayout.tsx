@@ -99,7 +99,7 @@ const AssessmentLayout: React.FC = () => {
       
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="overview">Overview & Visualization</TabsTrigger>
+          <TabsTrigger value="overview">Overview & Visualisation</TabsTrigger>
           <TabsTrigger value="assessment">Self Assessment</TabsTrigger>
           <TabsTrigger value="programmatic">Programmatic Assessment</TabsTrigger>
           <TabsTrigger value="planning">Planning</TabsTrigger>
