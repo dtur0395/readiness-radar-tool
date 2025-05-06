@@ -172,61 +172,63 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           try {
             const targetElement = activeTabPanel as HTMLElement;
             console.log(`Capturing active tab content: ${activeTabName}`);
-            
-            // Get the full height of the element
-            const elementHeight = targetElement.scrollHeight;
-            const elementWidth = targetElement.scrollWidth;
-            
-            console.log(`Target element dimensions: ${elementWidth}x${elementHeight}`);
-            
-            const canvas = await html2canvas(targetElement, {
+
+            // Get the full scroll height and width of the element
+            const elementScrollHeight = targetElement.scrollHeight;
+            const elementScrollWidth = targetElement.scrollWidth;
+            console.log(`Target element scroll dimensions: ${elementScrollWidth}x${elementScrollHeight}`);
+
+            // Options for html2canvas
+            const options = {
               scale: 1.5, // Restore scale for better resolution
               useCORS: true,
               logging: true,
               allowTaint: true,
               backgroundColor: '#ffffff',
               imageTimeout: 15000,
-              height: elementHeight, // Explicitly set height
-              width: elementWidth,   // Explicitly set width
-              windowHeight: elementHeight, // Ensure window height matches
-              windowWidth: elementWidth,   // Ensure window width matches
-              scrollY: -window.scrollY // Account for page scroll
-            });
-            
+              height: elementScrollHeight, // Use scrollHeight
+              width: elementScrollWidth,   // Use scrollWidth
+              windowHeight: elementScrollHeight, // Match window height to content
+              windowWidth: elementScrollWidth,   // Match window width to content
+              scrollY: -window.scrollY // Account for page scroll if any
+            };
+            console.log("html2canvas options:", options);
+
+            const canvas = await html2canvas(targetElement, options);
             console.log(`Canvas created: ${canvas.width}x${canvas.height}`);
-            
-            // Use PNG format again
+
+            // Use PNG format again for better quality
             const imgData = canvas.toDataURL('image/png');
-            const pdfWidth = 190; // A4 width with margins (210mm - 10mm margin left - 10mm margin right)
-            const pdfHeight = 277; // A4 height with margins (297mm - 10mm margin top - 10mm margin bottom)
-            
-            const imgProps = pdf.getImageProperties(imgData);
-            const imgWidth = pdfWidth;
-            const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-            
-            console.log(`Calculated image dimensions for PDF: ${imgWidth}x${imgHeight}`);
-            
-            let heightLeft = imgHeight;
-            let position = 0;
+            const pdfWidth = 190; // A4 width with margins (210mm - 10mm left - 10mm right)
+            const pdfPageHeight = 297; // A4 height in mm
             const pageTopMargin = 25; // Top margin for content on each page
             const pageBottomMargin = 10; // Bottom margin
-            const availablePageHeight = pdfHeight - pageTopMargin - pageBottomMargin; // Usable height per page
-            
+            const availablePageHeight = pdfPageHeight - pageTopMargin - pageBottomMargin; // Usable height per page
+
+            const imgProps = pdf.getImageProperties(imgData);
+            const imgWidth = pdfWidth;
+            // Calculate the total height the image will occupy in the PDF
+            const totalImgHeightInPDF = (imgProps.height * imgWidth) / imgProps.width;
+            console.log(`Calculated total image height in PDF: ${totalImgHeightInPDF}mm`);
+
+            let heightLeft = totalImgHeightInPDF;
+            let position = 0; // Position of the image slice on the Y axis
+
             // Add the first part of the image
-            pdf.addImage(imgData, 'PNG', 10, pageTopMargin, imgWidth, imgHeight);
+            pdf.addImage(imgData, 'PNG', 10, pageTopMargin, imgWidth, totalImgHeightInPDF);
             heightLeft -= availablePageHeight;
-            
-            console.log(`Initial heightLeft: ${heightLeft}`);
-            
+            console.log(`Added first image part. Initial heightLeft: ${heightLeft}`);
+
             // Add additional pages if needed
             while (heightLeft > 0) {
-              position -= availablePageHeight; // Move the image up for the next page
+              position -= availablePageHeight; // Move the viewing window of the image up
               pdf.addPage();
-              pdf.addImage(imgData, 'PNG', 10, position + pageTopMargin, imgWidth, imgHeight);
+              // Add the same image, but adjust the Y position to show the next part
+              pdf.addImage(imgData, 'PNG', 10, position + pageTopMargin, imgWidth, totalImgHeightInPDF);
               heightLeft -= availablePageHeight;
-              console.log(`Added new page, heightLeft: ${heightLeft}, position: ${position}`);
+              console.log(`Added new page. heightLeft: ${heightLeft}, position: ${position}`);
             }
-            
+
           } catch (err) {
             console.error(`Error capturing content:`, err);
             pdf.setFontSize(12);
@@ -236,17 +238,17 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             pdf.setTextColor(0, 0, 0);
           }
         } else {
-          // Fallback logic remains the same, but let's try PNG here too
+          // Fallback logic: Capture the main content element
           const mainContent = document.getElementById('assessment-content');
-          console.log("Falling back to main content, found:", !!mainContent);
-          
+          console.log("Falling back to main content capture, found:", !!mainContent);
+
           if (mainContent) {
             pdf.addPage();
             pdf.setFontSize(16);
-            pdf.text("Current View", 105, 15, { align: 'center' });
+            pdf.text("Current View (Fallback)", 105, 15, { align: 'center' });
             pdf.setDrawColor(0);
             pdf.line(20, 20, 190, 20);
-            
+
             try {
               const canvas = await html2canvas(mainContent, {
                 scale: 1.5, // Restore scale
@@ -254,39 +256,43 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 logging: true,
                 allowTaint: true,
                 backgroundColor: '#ffffff',
-                imageTimeout: 15000
+                imageTimeout: 15000,
+                height: mainContent.scrollHeight, // Use scrollHeight for fallback too
+                width: mainContent.scrollWidth
               });
-              
+
               const imgData = canvas.toDataURL('image/png'); // Use PNG
               const pdfWidth = 190;
-              const pdfHeight = 277;
-              const imgProps = pdf.getImageProperties(imgData);
-              const imgWidth = pdfWidth;
-              const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-              
-              let heightLeft = imgHeight;
-              let position = 0;
+              const pdfPageHeight = 297;
               const pageTopMargin = 25;
               const pageBottomMargin = 10;
-              const availablePageHeight = pdfHeight - pageTopMargin - pageBottomMargin;
-              
-              pdf.addImage(imgData, 'PNG', 10, pageTopMargin, imgWidth, imgHeight);
+              const availablePageHeight = pdfPageHeight - pageTopMargin - pageBottomMargin;
+
+              const imgProps = pdf.getImageProperties(imgData);
+              const imgWidth = pdfWidth;
+              const totalImgHeightInPDF = (imgProps.height * imgWidth) / imgProps.width;
+
+              let heightLeft = totalImgHeightInPDF;
+              let position = 0;
+
+              pdf.addImage(imgData, 'PNG', 10, pageTopMargin, imgWidth, totalImgHeightInPDF);
               heightLeft -= availablePageHeight;
-              
+
               while (heightLeft > 0) {
                 position -= availablePageHeight;
                 pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 10, position + pageTopMargin, imgWidth, imgHeight);
+                pdf.addImage(imgData, 'PNG', 10, position + pageTopMargin, imgWidth, totalImgHeightInPDF);
                 heightLeft -= availablePageHeight;
               }
             } catch (err) {
-              console.error("Error capturing main content:", err);
+              console.error("Error capturing main content (fallback):", err);
               pdf.setFontSize(12);
               pdf.setTextColor(255, 0, 0);
               pdf.text(`Error capturing content: ${err instanceof Error ? err.message : 'Unknown error'}`, 20, 40);
               pdf.setTextColor(0, 0, 0);
             }
           }
+        }
         }
       
       // Save the PDF
