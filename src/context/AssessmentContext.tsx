@@ -148,13 +148,14 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const activeTabIndex = tabIds.indexOf(activeTabValue);
       const activeTabName = activeTabIndex >= 0 ? tabNames[activeTabIndex] : "Current View";
 
-      // Add title page
+      // Add title page - Centered
+      const pageWidth = pdf.internal.pageSize.getWidth();
       pdf.setFontSize(24);
-      pdf.text(`${assessmentData.programName || 'Program'} Assessment Report`, 105, 30, { align: 'center' });
+      pdf.text(`${assessmentData.programName || 'Program'} Assessment Report`, pageWidth / 2, 30, { align: 'center' });
       pdf.setFontSize(16);
-      pdf.text(`Section: ${activeTabName}`, 105, 45, { align: 'center' });
+      pdf.text(`Section: ${activeTabName}`, pageWidth / 2, 45, { align: 'center' }); // Use correct tab name
       pdf.setFontSize(12);
-      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 55, { align: 'center' });
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, 55, { align: 'center' });
 
       // Add a new page for the content
       pdf.addPage();
