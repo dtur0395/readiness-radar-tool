@@ -3,6 +3,8 @@ import React, { createContext, useContext, useState } from 'react';
 import { AssessmentData } from '../types/assessmentTypes';
 import { defaultAssessmentData } from '../utils/defaultAssessmentData';
 import { toast } from '../components/ui/use-toast';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface AssessmentContextType {
   assessmentData: AssessmentData;
@@ -115,12 +117,75 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const exportPDF = () => {
-    // This would be implemented with a PDF generation library
-    toast({
-      title: "Export Feature Coming Soon",
-      description: "PDF export functionality will be available in a future update.",
-    });
+  const exportPDF = async () => {
+    try {
+      toast({
+        title: "Generating PDF",
+        description: "Please wait while we generate your PDF...",
+      });
+      
+      // Get the assessment content element
+      const element = document.getElementById('assessment-content');
+      if (!element) {
+        throw new Error('Assessment content element not found');
+      }
+      
+      // Create a canvas from the element
+      const canvas = await html2canvas(element, {
+        scale: 1.5, // Higher scale for better quality
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+      
+      // Calculate dimensions to fit in A4
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      // Add program name as title
+      pdf.setFontSize(16);
+      pdf.text(`${assessmentData.programName || 'Program'} Assessment Report`, 105, 15, { align: 'center' });
+      pdf.setFontSize(12);
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 22, { align: 'center' });
+      
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, 30, imgWidth, imgHeight);
+      heightLeft -= (pageHeight - 30);
+      
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      // Save the PDF
+      pdf.save(`${assessmentData.programName || 'program'}_assessment_${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      toast({
+        title: "PDF Generated",
+        description: "Your assessment has been exported as a PDF.",
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: "PDF Generation Failed",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    }
   };
 
   const value = {
