@@ -13,7 +13,7 @@ export const defaultAssessmentData: AssessmentData = {
       targetRating: 3,
       indicators: {
         level1: "Role is informal or unclear",
-        level2: "Some responsibilities recognized",
+        level2: "Some responsibilities recognised",
         level3: "Role formalised in governance; leads program-wide design and review"
       },
       evidence: ""
