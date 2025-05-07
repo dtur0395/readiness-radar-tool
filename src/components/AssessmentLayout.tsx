@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import DimensionRatingForm from './DimensionRatingForm';
@@ -60,7 +59,7 @@ const AssessmentLayout: React.FC = () => {
             <Save className="mr-1 h-4 w-4" /> Save
           </Button>
           <Button variant="outline" size="sm" onClick={exportPDF}>
-            <FileDown className="mr-1 h-4 w-4" /> Export
+            <FileDown className="mr-1 h-4 w-4" /> Export Complete Report
           </Button>
         </div>
       </div>
