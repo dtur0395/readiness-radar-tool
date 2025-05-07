@@ -14,7 +14,7 @@ export const defaultAssessmentData: AssessmentData = {
       indicators: {
         level1: "Role is informal or unclear",
         level2: "Some responsibilities recognized",
-        level3: "Role formalized in governance; leads program-wide design and review"
+        level3: "Role formalised in governance; leads program-wide design and review"
       },
       evidence: ""
     },
@@ -92,7 +92,7 @@ export const defaultAssessmentData: AssessmentData = {
       indicators: {
         level1: "Based solely on grade accumulation",
         level2: "Some discussion of readiness",
-        level3: "Program/specialization-level assessment markers (e.g. capstones); progression based on demonstrated competence"
+        level3: "Program/specialisation-level assessment markers (e.g. capstones); progression based on demonstrated competence"
       },
       evidence: ""
     },
