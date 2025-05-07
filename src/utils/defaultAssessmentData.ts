@@ -91,7 +91,7 @@ export const defaultAssessmentData: AssessmentData = {
     },
     {
       id: "streamlining",
-      name: "Streamlining of assessment",
+      name: "Streamlining of Assessment",
       stage: "Design",
       currentRating: 1,
       targetRating: 3,
