@@ -145,7 +145,7 @@ const AssessmentLayout: React.FC = () => {
                 <ol className="list-decimal list-inside space-y-2 text-sm">
                   <li>Complete the <strong>Self Assessment</strong> tab by rating your program across the assessment dimensions</li>
                   <li>Use the <strong>Planning</strong> tab to identify strengths, gaps, and opportunities for development</li>
-                  <li>Save your results and revisit the tool over time to track progress</li>
+                  <li><strong>Save</strong> your results and revisit the tool over time to track progress</li>
                   <li>To continue work at a later time, use the <strong>Load</strong> button to import your previously saved results</li>
                 </ol>
                 <Separator />
