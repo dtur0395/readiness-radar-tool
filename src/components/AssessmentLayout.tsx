@@ -2,7 +2,6 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import DimensionRatingForm from './DimensionRatingForm';
-import ProgrammaticAssessmentForm from './ProgrammaticAssessmentForm';
 import PlanningForm from './PlanningForm';
 import RadarChart from './RadarChart';
 import { useAssessment } from '../context/AssessmentContext';
@@ -23,7 +22,7 @@ const AssessmentLayout: React.FC = () => {
     exportPDF 
   } = useAssessment();
   
-  const { dimensions, programmaticItems, programName } = assessmentData;
+  const { dimensions, programName } = assessmentData;
   
   // Group dimensions by stage
   const dimensionsByStage = dimensions.reduce((acc, dimension) => {
@@ -35,10 +34,6 @@ const AssessmentLayout: React.FC = () => {
   }, {} as Record<string, typeof dimensions>);
 
   const stages = Object.keys(dimensionsByStage);
-
-  // Calculate programmatic assessment readiness
-  const programmaticYesCount = programmaticItems.filter(item => item.answer === true).length;
-  const isProgrammaticReady = programmaticYesCount >= 3;
 
   const handleProgramNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProgramName(e.target.value);
@@ -98,10 +93,9 @@ const AssessmentLayout: React.FC = () => {
       </Card>
       
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="overview">Overview & Visualisation</TabsTrigger>
           <TabsTrigger value="assessment">Self Assessment</TabsTrigger>
-          <TabsTrigger value="programmatic">Programmatic Assessment</TabsTrigger>
           <TabsTrigger value="planning">Planning</TabsTrigger>
         </TabsList>
         
@@ -114,7 +108,6 @@ const AssessmentLayout: React.FC = () => {
               <CardContent className="space-y-4">
                 <ol className="list-decimal list-inside space-y-2 text-sm">
                   <li>Complete the <strong>Self Assessment</strong> tab by rating your program across the assessment dimensions</li>
-                  <li>If applicable, complete the <strong>Programmatic Assessment</strong> tab to determine readiness for this approach</li>
                   <li>Use the <strong>Planning</strong> tab to identify strengths and areas for improvement</li>
                   <li>Save your results and revisit over time to track progress</li>
                 </ol>
@@ -135,84 +128,37 @@ const AssessmentLayout: React.FC = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center">
-                  <Flag className="h-5 w-5 mr-2 text-blue-600" />
-                  Readiness Stage
-                </CardTitle>
-                <Separator />
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Foundation elements required before implementing program-level assessment
-                </p>
-                <ul className="space-y-1 text-sm">
-                  {dimensionsByStage['Readiness']?.map(dim => (
-                    <li key={dim.id} className="flex items-center">
-                      <div className={`w-2 h-2 rounded-full mr-2 ${dim.currentRating === 3 ? 'bg-green-500' : dim.currentRating === 2 ? 'bg-yellow-400' : 'bg-red-400'}`}></div>
-                      <span>{dim.name}: <strong>Level {dim.currentRating}</strong></span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center">
-                  <Check className="h-5 w-5 mr-2 text-green-600" />
-                  Programmatic Assessment
-                </CardTitle>
-                <Separator />
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Readiness for programmatic assessment approach
-                </p>
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${isProgrammaticReady ? 'bg-green-500' : 'bg-yellow-400'}`}></div>
-                  <span className="font-medium text-sm">{programmaticYesCount}/5 criteria met</span>
-                </div>
-                <p className="text-sm">
-                  {isProgrammaticReady 
-                    ? "Your program may be ready to pilot programmatic assessment." 
-                    : "Continue building foundational elements before implementing programmatic assessment."}
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center">
-                  <Award className="h-5 w-5 mr-2 text-purple-600" />
-                  Overall Readiness
-                </CardTitle>
-                <Separator />
-              </CardHeader>
-              <CardContent>
-                {dimensions.length > 0 && (
-                  <>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Average rating:</span>
-                      <span className="font-bold">
-                        {(dimensions.reduce((acc, dim) => acc + dim.currentRating, 0) / dimensions.length).toFixed(1)} / 3.0
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div 
-                        className="bg-blue-600 h-2.5 rounded-full" 
-                        style={{ width: `${(dimensions.reduce((acc, dim) => acc + dim.currentRating, 0) / (dimensions.length * 3)) * 100}%` }}
-                      ></div>
-                    </div>
-                    <p className="mt-3 text-sm">
-                      {dimensions.filter(d => d.currentRating === 3).length} dimensions at Level 3 (Aligned to PLA Minimum)
-                    </p>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {stages.map(stage => (
+              <Card key={stage}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center">
+                    {stage === 'Readiness' && <Flag className="h-5 w-5 mr-2 text-blue-600" />}
+                    {stage === 'Design' && <Check className="h-5 w-5 mr-2 text-green-600" />}
+                    {stage === 'Delivery' && <Award className="h-5 w-5 mr-2 text-purple-600" />}
+                    {stage === 'Monitoring' && <Check className="h-5 w-5 mr-2 text-orange-600" />}
+                    {stage} Stage
+                  </CardTitle>
+                  <Separator />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {stage === 'Readiness' && 'Foundation elements required before implementing program-level assessment'}
+                    {stage === 'Design' && 'Elements for designing effective program-level assessment'}
+                    {stage === 'Delivery' && 'Implementation aspects of program-level assessment'}
+                    {stage === 'Monitoring' && 'Ongoing review and improvement of assessment practices'}
+                  </p>
+                  <ul className="space-y-1 text-sm">
+                    {dimensionsByStage[stage]?.map(dim => (
+                      <li key={dim.id} className="flex items-center">
+                        <div className={`w-2 h-2 rounded-full mr-2 ${dim.currentRating === 3 ? 'bg-green-500' : dim.currentRating === 2 ? 'bg-yellow-400' : 'bg-red-400'}`}></div>
+                        <span>{dim.name}: <strong>Level {dim.currentRating}</strong></span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </TabsContent>
         
@@ -235,30 +181,6 @@ const AssessmentLayout: React.FC = () => {
               </div>
             </div>
           ))}
-        </TabsContent>
-        
-        <TabsContent value="programmatic">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle>Programmatic Assessment Readiness</CardTitle>
-              <CardDescription>
-                Complete this section if your program has accreditation-based progression requirements
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {programmaticItems.map(item => (
-                  <ProgrammaticAssessmentForm key={item.id} item={item} />
-                ))}
-              </div>
-              <div className="mt-6 p-4 border rounded-md bg-blue-50">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> If most answers are Yes, your program may be ready to pilot programmatic assessment. 
-                  Refer to the PAL Implementation Readiness Checklist and consult the Education Portfolio.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
         
         <TabsContent value="planning">
