@@ -12,6 +12,7 @@ export type Dimension = {
     level3: string;
   };
   evidence?: string;
+  definition?: string;
 };
 
 // Additional programmatic assessment checklist item

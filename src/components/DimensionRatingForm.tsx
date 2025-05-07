@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Dimension } from '../types/assessmentTypes';
-// Removed unused Radio import
 import { useAssessment } from '../context/AssessmentContext';
 import { Textarea } from './ui/textarea';
 import { 
@@ -49,7 +48,14 @@ const DimensionRatingForm: React.FC<DimensionRatingFormProps> = ({ dimension }) 
     <Card className="shadow-sm">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
-          <CardTitle className="text-lg">{dimension.name}</CardTitle>
+          <div>
+            <CardTitle className="text-lg">{dimension.name}</CardTitle>
+            {dimension.definition && (
+              <CardDescription className="mt-1 text-sm italic">
+                {dimension.definition}
+              </CardDescription>
+            )}
+          </div>
           <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStageColor(dimension.stage)}`}>
             {dimension.stage}
           </span>
@@ -58,7 +64,7 @@ const DimensionRatingForm: React.FC<DimensionRatingFormProps> = ({ dimension }) 
       </CardHeader>
       <CardContent>
         <RadioGroup 
-          value={dimension.currentRating.toString()} // Use value instead of defaultValue
+          value={dimension.currentRating.toString()}
           onValueChange={handleRatingChange}
           className="flex space-x-1 mb-4"
         >

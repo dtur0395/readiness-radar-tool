@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import DimensionRatingForm from './DimensionRatingForm';
@@ -10,6 +11,11 @@ import { Label } from './ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Check, Flag, Award, Save, RotateCcw, FileDown } from 'lucide-react';
 import { Separator } from './ui/separator';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger 
+} from './ui/tooltip';
 
 const AssessmentLayout: React.FC = () => {
   const { 
@@ -49,18 +55,49 @@ const AssessmentLayout: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={resetAssessment}>
-            <RotateCcw className="mr-1 h-4 w-4" /> Reset
-          </Button>
-          <Button variant="outline" size="sm" onClick={loadAssessment}>
-            <Award className="mr-1 h-4 w-4" /> Load
-          </Button>
-          <Button variant="default" size="sm" onClick={saveAssessment}>
-            <Save className="mr-1 h-4 w-4" /> Save
-          </Button>
-          <Button variant="outline" size="sm" onClick={exportPDF}>
-            <FileDown className="mr-1 h-4 w-4" /> Export Complete Report
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={resetAssessment}>
+                <RotateCcw className="mr-1 h-4 w-4" /> Reset
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Reset all data to default values</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={loadAssessment}>
+                <Award className="mr-1 h-4 w-4" /> Load
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Load assessment data from a JSON file</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="default" size="sm" onClick={saveAssessment}>
+                <Save className="mr-1 h-4 w-4" /> Save
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Save assessment data to a JSON file</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={exportPDF}>
+                <FileDown className="mr-1 h-4 w-4" /> Export Complete Report
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Export all sections as a complete PDF report</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
       
