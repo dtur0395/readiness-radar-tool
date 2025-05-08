@@ -152,9 +152,9 @@ const AssessmentLayout: React.FC = () => {
                 <div>
                   <h4 className="font-medium mb-1">Scoring Guidance</h4>
                   <ul className="space-y-1 text-sm">
-                    <li><strong>Level 1:</strong> Baseline</li>
-                    <li><strong>Level 2:</strong> Intermediate</li>
-                    <li><strong>Level 3:</strong> Program-Level Assessment</li>
+                    <li><strong>Level 1: Emerging</strong>  – some local, ad hoc or early-stage activity, limited coordination</li>
+                    <li><strong>Level 2: Developing</strong> – elements of coordination and alignment are evident, but partial or inconsistent</li>
+                    <li><strong>Level 3: Established (Program-Level Assessment)</strong> – fully implemented, institutionally aligned, and embedded</li>
                   </ul>
                 </div>
               </CardContent>
