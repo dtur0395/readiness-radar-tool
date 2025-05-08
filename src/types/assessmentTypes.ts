@@ -13,7 +13,14 @@ export type Dimension = {
   };
   evidence?: string;
   definition?: string;
+  cluster: ThematicCluster;
 };
+
+export type ThematicCluster = 
+  | "Accountability and Coordination"
+  | "Learning Outcomes and Curriculum Mapping"
+  | "Assessment Quality and Security"
+  | "Visibility of Student Achievement";
 
 // Additional programmatic assessment checklist item
 export type ProgrammaticItem = {
