@@ -17,8 +17,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Role formalised in governance; leads program-wide design and review"
       },
       evidence: "",
-      definition: "The extent to which leadership roles for assessment at the program or specialisation level are formally recognised, resourced, and embedded in governance structures.",
-      cluster: "Accountability and Coordination"
+      definition: "The extent to which leadership roles for assessment at the program or specialisation level are formally recognised, resourced, and embedded in governance structures."
     },
     {
       id: "responsibility",
@@ -32,8 +31,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Shared responsibility across the program, supported by governance"
       },
       evidence: "",
-      definition: "The degree to which responsibility for assessment design and alignment is coordinated across a program, rather than left solely to individual course convenors.",
-      cluster: "Accountability and Coordination"
+      definition: "The degree to which responsibility for assessment design and alignment is coordinated across a program, rather than left solely to individual course convenors."
     },
     {
       id: "literacy",
@@ -47,8 +45,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Assessment literacy embedded in staff development and roles"
       },
       evidence: "",
-      definition: "The level of staff capability and shared understanding in designing, delivering, and evaluating assessment aligned with program outcomes and feedback principles.",
-      cluster: "Accountability and Coordination"
+      definition: "The level of staff capability and shared understanding in designing, delivering, and evaluating assessment aligned with program outcomes and feedback principles."
     },
     {
       id: "outcomes",
@@ -62,8 +59,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Learning outcomes mapped and embedded in assessment"
       },
       evidence: "",
-      definition: "The clarity, consistency, and program-level integration of learning outcomes (CLOs, SLOs, PLOs), and their use in guiding curriculum and assessment design.",
-      cluster: "Learning Outcomes and Curriculum Mapping"
+      definition: "The clarity, consistency, and program-level integration of learning outcomes (CLOs, SLOs, PLOs), and their use in guiding curriculum and assessment design."
     },
     {
       id: "curriculum",
@@ -77,8 +73,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Current map informs sequencing and assessment design"
       },
       evidence: "",
-      definition: "The extent to which learning outcomes, graduate capabilities, and assessments are systematically mapped across a program to identify gaps and redundancies.",
-      cluster: "Learning Outcomes and Curriculum Mapping"
+      definition: "The extent to which learning outcomes, graduate capabilities, and assessments are systematically mapped across a program to identify gaps and redundancies."
     },
     {
       id: "mapping",
@@ -92,8 +87,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Scaffolded assessment across program lifecycle"
       },
       evidence: "",
-      definition: "The degree of alignment and scaffolding of assessment tasks across courses to support coherent progression and program-level decision-making.",
-      cluster: "Learning Outcomes and Curriculum Mapping"
+      definition: "The degree of alignment and scaffolding of assessment tasks across courses to support coherent progression and program-level decision-making."
     },
     {
       id: "streamlining",
@@ -107,8 +101,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Assessment is streamlined, with coordinated workload and no unnecessary duplication."
       },
       evidence: "",
-      definition: "The extent to which assessment tasks are intentionally coordinated across courses to eliminate duplication, manage workload, and ensure each task adds distinct value to program outcomes.",
-      cluster: "Assessment Quality and Security"
+      definition: "The extent to which assessment tasks are intentionally coordinated across courses to eliminate duplication, manage workload, and ensure each task adds distinct value to program outcomes."
     },
     {
       id: "progression",
@@ -122,8 +115,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Program/specialisation-level assessment markers (e.g. capstones); progression based on demonstrated competence"
       },
       evidence: "",
-      definition: "The degree to which student progression is tracked and informed by structured evidence across multiple courses and stages, rather than single grades.",
-      cluster: "Visibility of Student Achievement"
+      definition: "The degree to which student progression is tracked and informed by structured evidence across multiple courses and stages, rather than single grades."
     },
     {
       id: "mix",
@@ -137,8 +129,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Program-level mix supports learning outcomes"
       },
       evidence: "",
-      definition: "The diversity, coherence, and intentional sequencing of assessment types across a program to reduce duplication and support learning outcomes.",
-      cluster: "Assessment Quality and Security"
+      definition: "The diversity, coherence, and intentional sequencing of assessment types across a program to reduce duplication and support learning outcomes."
     },
     {
       id: "rubric",
@@ -152,8 +143,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Consistent and aligned with outcomes"
       },
       evidence: "",
-      definition: "The extent to which shared, outcomes-aligned rubrics are used across the program to support consistency, transparency, and feedback quality.",
-      cluster: "Assessment Quality and Security"
+      definition: "The extent to which shared, outcomes-aligned rubrics are used across the program to support consistency, transparency, and feedback quality."
     },
     {
       id: "ai",
@@ -167,8 +157,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Design incorporates AI resilience where relevant"
       },
       evidence: "",
-      definition: "The degree to which assessment design considers resilience to generative AI, including authentic tasks and secure or adaptive formats.",
-      cluster: "Assessment Quality and Security"
+      definition: "The degree to which assessment design considers resilience to generative AI, including authentic tasks and secure or adaptive formats."
     },
     {
       id: "governance",
@@ -182,8 +171,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Assessment guidelines are clearly defined and support consistent application across the program in line with university policy"
       },
       evidence: "",
-      definition: "The clarity and consistency of institutional or faculty-level guidelines, moderation practices, and quality assurance processes for assessment.",
-      cluster: "Accountability and Coordination"
+      definition: "The clarity and consistency of institutional or faculty-level guidelines, moderation practices, and quality assurance processes for assessment."
     },
     {
       id: "feedback",
@@ -197,8 +185,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Structured feedback embedded in all assessment tasks; some use of feeding forward practices"
       },
       evidence: "",
-      definition: "The extent to which feedback is structured, coordinated across courses, and used to support developmental learning and progression.",
-      cluster: "Visibility of Student Achievement"
+      definition: "The extent to which feedback is structured, coordinated across courses, and used to support developmental learning and progression."
     },
     {
       id: "visibility",
@@ -212,8 +199,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Progress toward SLOs/PLOs is monitored using program-level dashboards; partial visibility to students"
       },
       evidence: "",
-      definition: "The extent to which students and staff can view, track, and reflect on progress against program-level outcomes using tools such as dashboards or portfolios.",
-      cluster: "Visibility of Student Achievement"
+      definition: "The extent to which students and staff can view, track, and reflect on progress against program-level outcomes using tools such as dashboards or portfolios."
     },
     {
       id: "integrity",
@@ -227,8 +213,7 @@ export const defaultAssessmentData: AssessmentData = {
         level3: "Program-level strategies in place"
       },
       evidence: "",
-      definition: "The level of consistency and strategy in designing assessments that uphold academic integrity and are secure against misconduct risks.",
-      cluster: "Assessment Quality and Security"
+      definition: "The level of consistency and strategy in designing assessments that uphold academic integrity and are secure against misconduct risks."
     },
   ],
   programmaticItems: [
